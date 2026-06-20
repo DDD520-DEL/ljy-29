@@ -1,17 +1,29 @@
-import { useState } from 'react';
-import { Play, Square, RotateCcw, AlertCircle, CheckCircle, Clock, Tag, FileText, Save, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Play, Square, RotateCcw, AlertCircle, CheckCircle, Clock, Tag, FileText, Save, X, Sparkles } from 'lucide-react';
 import { TrafficLight } from '@/components/TrafficLight';
 import { TimerDisplay } from '@/components/TimerDisplay';
 import { IntersectionSelector } from '@/components/IntersectionSelector';
 import { DirectionSelector } from '@/components/DirectionSelector';
 import { useDataStore } from '@/store/useDataStore';
 import { TAG_OPTIONS, Tag as TagType } from '@/types';
+import { calculateMovingAveragePredictions, getCurrentPeriodPrediction } from '@/utils/predictionUtils';
 
 export default function TimerPage() {
-  const { timerStatus, elapsedSeconds, isOverLimit, selectedIntersectionId, selectedDirection, lastSaveResult, pendingRecord, intersections, startTimer, stopTimer, resetTimer, confirmSaveRecord } = useDataStore();
+  const { timerStatus, elapsedSeconds, isOverLimit, selectedIntersectionId, selectedDirection, lastSaveResult, pendingRecord, intersections, records, startTimer, stopTimer, resetTimer, confirmSaveRecord } = useDataStore();
 
   const currentIntersection = intersections.find(i => i.id === selectedIntersectionId);
   const reasonableWaitTime = currentIntersection?.reasonableWaitTime;
+
+  const currentPrediction = useMemo(() => {
+    if (!selectedIntersectionId || !currentIntersection) return null;
+    const prediction = calculateMovingAveragePredictions(
+      records,
+      selectedIntersectionId,
+      currentIntersection.name,
+      14
+    );
+    return getCurrentPeriodPrediction(prediction);
+  }, [selectedIntersectionId, currentIntersection, records]);
 
   const [note, setNote] = useState('');
   const [selectedTag, setSelectedTag] = useState<TagType | undefined>(undefined);
@@ -58,6 +70,41 @@ export default function TimerPage() {
                 </span>
               )}
             </span>
+          </div>
+        )}
+
+        {selectedIntersectionId && currentPrediction && timerStatus === 'idle' && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span className="text-sm text-purple-400 font-medium">当前时段预测</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-slate-300">{currentPrediction.periodLabel}</div>
+                <div className="text-xs text-slate-500">基于近14天历史数据</div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-bold text-purple-400">
+                  {currentPrediction.predictedDuration}
+                  <span className="text-sm font-normal text-slate-400 ml-1">秒</span>
+                </div>
+                <div className="text-xs text-slate-500">预估等待时长</div>
+              </div>
+            </div>
+            {reasonableWaitTime !== undefined && reasonableWaitTime > 0 && (
+              <div className="mt-2 pt-2 border-t border-purple-500/20">
+                {currentPrediction.predictedDuration > reasonableWaitTime ? (
+                  <span className="text-xs text-orange-400">
+                    ⚠️ 预测值超过合理时长，建议错峰出行
+                  </span>
+                ) : (
+                  <span className="text-xs text-green-400">
+                    ✓ 预测值在合理范围内
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
 

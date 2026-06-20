@@ -10,14 +10,16 @@ import {
   LineChart,
   Line,
   Cell,
+  Legend,
 } from 'recharts';
-import { Trophy, Clock, TrendingUp, AlertTriangle, Tag, Folder, Award, Lightbulb, BarChart3 } from 'lucide-react';
+import { Trophy, Clock, TrendingUp, AlertTriangle, Tag, Folder, Award, Lightbulb, BarChart3, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
-import { TIME_PERIOD_LABELS, TimePeriod, TAG_OPTIONS, TAG_LABELS, Tag as TagType, GroupStats, GRADE_LABELS, GRADE_COLORS } from '@/types';
-import { formatDate, getDaysAgoDate, isSameDay } from '@/utils/timeUtils';
+import { TIME_PERIOD_LABELS, TimePeriod, TAG_OPTIONS, GroupStats, GRADE_LABELS, GRADE_COLORS } from '@/types';
+import { formatDate, getDaysAgoDate } from '@/utils/timeUtils';
 import IntersectionRankingShare from '@/components/IntersectionRankingShare';
 import type { RankItem } from '@/utils/shareUtils';
 import { calculateAllTimingScores } from '@/utils/timingScore';
+import { calculateMovingAveragePredictions, IntersectionPrediction } from '@/utils/predictionUtils';
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
@@ -27,6 +29,8 @@ export default function AnalysisPage() {
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
   const [expandedScoreId, setExpandedScoreId] = useState<string | null>(null);
+  const [selectedPredictionIntersection, setSelectedPredictionIntersection] = useState<string>('all');
+  const [showPredictionDetail, setShowPredictionDetail] = useState(false);
 
   const baseFilteredRecords = useMemo(() => {
     const days = parseInt(timeRange);
@@ -244,6 +248,30 @@ export default function AnalysisPage() {
 
   const worstTimingScore = timingScoreList[0];
   const bestTimingScore = timingScoreList[timingScoreList.length - 1];
+
+  const predictions = useMemo((): IntersectionPrediction[] => {
+    return intersections.map(intersection =>
+      calculateMovingAveragePredictions(records, intersection.id, intersection.name, 14)
+    );
+  }, [records, intersections]);
+
+  const selectedPrediction = useMemo(() => {
+    if (selectedPredictionIntersection === 'all') {
+      return null;
+    }
+    return predictions.find(p => p.intersectionId === selectedPredictionIntersection) || null;
+  }, [predictions, selectedPredictionIntersection]);
+
+  const predictionChartData = useMemo(() => {
+    if (!selectedPrediction) return [];
+    return selectedPrediction.dailyPredictions.map(day => ({
+      date: day.dayLabel,
+      早高峰: day.periods.find(p => p.period === 'morning_peak')?.predictedDuration || 0,
+      平峰: day.periods.find(p => p.period === 'flat')?.predictedDuration || 0,
+      晚高峰: day.periods.find(p => p.period === 'evening_peak')?.predictedDuration || 0,
+      夜间: day.periods.find(p => p.period === 'night')?.predictedDuration || 0,
+    }));
+  }, [selectedPrediction]);
 
   const toggleScoreExpand = (intersectionId: string) => {
     setExpandedScoreId(expandedScoreId === intersectionId ? null : intersectionId);
@@ -878,6 +906,168 @@ export default function AnalysisPage() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="mb-8">
+          <div
+            className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-xl p-4 cursor-pointer"
+            onClick={() => setShowPredictionDetail(!showPredictionDetail)}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-purple-400" />
+                <h2 className="text-lg font-semibold text-white">未来一周预测</h2>
+              </div>
+              {showPredictionDetail ? (
+                <ChevronUp className="w-5 h-5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-400" />
+              )}
+            </div>
+            <p className="text-sm text-slate-400 mt-1">基于近14天历史数据的移动平均预测</p>
+          </div>
+
+          {showPredictionDetail && (
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">选择路口查看预测</label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPredictionIntersection('all')}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      selectedPredictionIntersection === 'all'
+                        ? 'bg-purple-500 text-white'
+                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                    }`}
+                  >
+                    总览
+                  </button>
+                  {intersections.map((intersection) => (
+                    <button
+                      key={intersection.id}
+                      type="button"
+                      onClick={() => setSelectedPredictionIntersection(intersection.id)}
+                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                        selectedPredictionIntersection === intersection.id
+                          ? 'bg-purple-500 text-white'
+                          : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                      }`}
+                    >
+                      {intersection.name.length > 8 ? intersection.name.slice(0, 8) + '...' : intersection.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {selectedPrediction ? (
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                  <h3 className="text-white font-medium mb-4">
+                    {selectedPrediction.intersectionName} - 各时段预测等待时长
+                  </h3>
+                  <div className="h-72">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={predictionChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                        <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} />
+                        <YAxis stroke="#94a3b8" fontSize={12} />
+                        <Tooltip
+                          content={({ active, payload, label }: any) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-xl">
+                                  <p className="text-white font-medium mb-2">{label}</p>
+                                  {payload.map((entry: any, index: number) => (
+                                    <p key={index} className="text-sm" style={{ color: entry.color }}>
+                                      {entry.name}: {entry.value}秒
+                                    </p>
+                                  ))}
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: '12px' }} />
+                        <Bar dataKey="早高峰" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="平峰" fill="#10b981" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="晚高峰" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="夜间" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {selectedPrediction.dailyPredictions.map((day) => (
+                      <div
+                        key={day.date}
+                        className="bg-slate-900/50 rounded-lg p-3 border border-slate-700/30"
+                      >
+                        <div className="text-sm font-medium text-white mb-2">{day.dayLabel}</div>
+                        <div className="space-y-1">
+                          {day.periods.map((period) => (
+                            <div
+                              key={period.period}
+                              className="flex items-center justify-between text-xs"
+                            >
+                              <span className="text-slate-400">{period.periodLabel}</span>
+                              <span className="text-purple-400 font-medium">
+                                {period.predictedDuration}s
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+                  <h3 className="text-white font-medium mb-4">各路口今日预测概览</h3>
+                  <div className="space-y-2">
+                    {predictions.map((prediction) => {
+                      const todayPred = prediction.dailyPredictions[0];
+                      const avgPred = todayPred
+                        ? Math.round(
+                            todayPred.periods.reduce((sum, p) => sum + p.predictedDuration, 0) /
+                              todayPred.periods.length
+                          )
+                        : 0;
+                      const peakPeriod = todayPred?.periods.reduce((max, p) =>
+                        p.predictedDuration > max.predictedDuration ? p : max
+                      );
+
+                      return (
+                        <div
+                          key={prediction.intersectionId}
+                          className="flex items-center gap-4 p-3 bg-slate-900/50 rounded-lg border border-slate-700/30"
+                        >
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                            style={{ backgroundColor: '#8b5cf6' }}
+                          >
+                            {prediction.intersectionName.charAt(0)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-white truncate">
+                              {prediction.intersectionName}
+                            </div>
+                            <div className="text-xs text-slate-400">
+                              峰值时段: {peakPeriod?.periodLabel} ({peakPeriod?.predictedDuration}s)
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-purple-400">{avgPred}s</div>
+                            <div className="text-xs text-slate-500">今日平均预测</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <IntersectionRankingShare
