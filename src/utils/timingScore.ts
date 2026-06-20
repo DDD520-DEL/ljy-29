@@ -15,19 +15,21 @@ function calculateAvgDurationScore(avgDuration: number, reasonableTime: number):
   const ratio = avgDuration / reasonableTime;
 
   if (ratio <= 0.5) {
-    return 80 + (0.5 - ratio) * 40;
+    return 100 - ratio * 4;
   } else if (ratio <= 0.8) {
-    return 90 + (0.8 - ratio) * 33.33;
+    return 98 - (ratio - 0.5) * 26.667;
   } else if (ratio <= 1.0) {
-    return 75 + (1.0 - ratio) * 75;
+    return 90 - (ratio - 0.8) * 75;
   } else if (ratio <= 1.2) {
-    return 60 + (1.2 - ratio) * 75;
+    return 75 - (ratio - 1.0) * 75;
   } else if (ratio <= 1.5) {
-    return 40 + (1.5 - ratio) * 66.67;
+    return 60 - (ratio - 1.2) * 66.667;
   } else if (ratio <= 2.0) {
-    return 20 + (2.0 - ratio) * 40;
+    return 40 - (ratio - 1.5) * 40;
+  } else if (ratio <= 3.0) {
+    return 20 - (ratio - 2.0) * 20;
   } else {
-    return Math.max(0, 20 - (ratio - 2.0) * 20);
+    return 0;
   }
 }
 
