@@ -1,5 +1,5 @@
-import { Trash2 } from 'lucide-react';
-import { WaitRecord, TIME_PERIOD_LABELS } from '@/types';
+import { Trash2, Tag, FileText } from 'lucide-react';
+import { WaitRecord, TIME_PERIOD_LABELS, TAG_LABELS } from '@/types';
 import { formatDurationWithHours, formatDateTime, getDirectionLabel, getDirectionEmoji } from '@/utils/timeUtils';
 import { useDataStore } from '@/store/useDataStore';
 
@@ -41,6 +41,22 @@ export function RecordCard({ record }: RecordCardProps) {
               {TIME_PERIOD_LABELS[record.timePeriod]}
             </span>
           </div>
+          {(record.tag || record.note) && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {record.tag && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-500/20 text-amber-400 rounded text-xs font-medium">
+                  <Tag className="w-3 h-3" />
+                  {TAG_LABELS[record.tag]}
+                </span>
+              )}
+              {record.note && (
+                <span className="inline-flex items-center gap-1 text-xs text-slate-400 truncate max-w-[200px]">
+                  <FileText className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{record.note}</span>
+                </span>
+              )}
+            </div>
+          )}
         </div>
         <button
           type="button"

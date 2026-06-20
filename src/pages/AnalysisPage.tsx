@@ -13,9 +13,9 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { Trophy, Clock, TrendingUp, AlertTriangle } from 'lucide-react';
+import { Trophy, Clock, TrendingUp, AlertTriangle, Tag } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
-import { TIME_PERIOD_LABELS, TimePeriod } from '@/types';
+import { TIME_PERIOD_LABELS, TimePeriod, TAG_OPTIONS, TAG_LABELS, Tag as TagType } from '@/types';
 import { formatDate, getDaysAgoDate, isSameDay } from '@/utils/timeUtils';
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
@@ -23,12 +23,18 @@ const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'
 export default function AnalysisPage() {
   const { records, intersections } = useDataStore();
   const [timeRange, setTimeRange] = useState<'7' | '30'>('30');
+  const [selectedTag, setSelectedTag] = useState<string>('all');
 
-  const filteredRecords = useMemo(() => {
+  const baseFilteredRecords = useMemo(() => {
     const days = parseInt(timeRange);
     const cutoffDate = getDaysAgoDate(days);
     return records.filter(r => new Date(r.startTime) >= cutoffDate);
   }, [records, timeRange]);
+
+  const filteredRecords = useMemo(() => {
+    if (selectedTag === 'all') return baseFilteredRecords;
+    return baseFilteredRecords.filter(r => r.tag === selectedTag);
+  }, [baseFilteredRecords, selectedTag]);
 
   const intersectionStats = useMemo(() => {
     const statsMap = new Map<string, { name: string; total: number; count: number; max: number }>();
@@ -86,6 +92,34 @@ export default function AnalysisPage() {
       });
   }, [filteredRecords]);
 
+  const tagStats = useMemo(() => {
+    const tagMap = new Map<string, { total: number; count: number }>();
+
+    baseFilteredRecords.forEach((record) => {
+      const tagKey = record.tag || 'untagged';
+      const existing = tagMap.get(tagKey);
+      if (existing) {
+        existing.total += record.duration;
+        existing.count += 1;
+      } else {
+        tagMap.set(tagKey, { total: record.duration, count: 1 });
+      }
+    });
+
+    return TAG_OPTIONS
+      .filter(opt => tagMap.has(opt.value))
+      .map((opt) => {
+        const data = tagMap.get(opt.value)!;
+        return {
+          tag: opt.value,
+          label: opt.label,
+          avg: Math.round(data.total / data.count),
+          count: data.count,
+        };
+      })
+      .sort((a, b) => b.count - a.count);
+  }, [baseFilteredRecords]);
+
   const dailyTrend = useMemo(() => {
     const days = parseInt(timeRange);
     const dailyMap = new Map<string, number[]>();
@@ -140,7 +174,7 @@ export default function AnalysisPage() {
           <p className="text-slate-400 text-sm">看看哪些路口最让人抓狂</p>
         </div>
 
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-4">
           {(['7', '30'] as const).map((range) => (
             <button
               key={range}
@@ -155,6 +189,40 @@ export default function AnalysisPage() {
               近{range}天
             </button>
           ))}
+        </div>
+
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <Tag className="w-4 h-4 text-slate-400" />
+            <span className="text-sm text-slate-400">按标签筛选</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedTag('all')}
+              className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                selectedTag === 'all'
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              }`}
+            >
+              全部
+            </button>
+            {TAG_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setSelectedTag(selectedTag === option.value ? 'all' : option.value)}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  selectedTag === option.value
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {worstIntersection && (
@@ -195,6 +263,38 @@ export default function AnalysisPage() {
             </div>
           </div>
         </div>
+
+        {tagStats.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Tag className="w-5 h-5 text-amber-400" />
+              标签平均等待时长
+            </h2>
+            <div className="space-y-2">
+              {tagStats.map((item, index) => (
+                <div
+                  key={item.tag}
+                  className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4"
+                >
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] + '30', color: COLORS[index % COLORS.length] }}
+                  >
+                    {item.label.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-white truncate">{item.label}</div>
+                    <div className="text-xs text-slate-400">{item.count} 次记录</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-amber-400">{item.avg}s</div>
+                    <div className="text-xs text-slate-500">平均</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">

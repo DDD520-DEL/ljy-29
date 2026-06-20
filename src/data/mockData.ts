@@ -1,4 +1,4 @@
-import { Intersection, WaitRecord, Direction, TimePeriod } from '@/types';
+import { Intersection, WaitRecord, Direction, TimePeriod, Tag } from '@/types';
 
 export const mockIntersections: Intersection[] = [
   {
@@ -48,6 +48,13 @@ export const mockIntersections: Intersection[] = [
 function generateMockRecords(): WaitRecord[] {
   const records: WaitRecord[] = [];
   const directions: Direction[] = ['east', 'south', 'west', 'north'];
+  const tags: (Tag | undefined)[] = ['rushing', 'pickup', 'commute', 'school', 'shopping', 'leisure', undefined, undefined];
+  const noteOptions: (string | undefined)[] = [
+    '红灯太长了',
+    '今天特别堵',
+    '又是这个路口',
+    undefined, undefined, undefined,
+  ];
   const now = new Date();
 
   for (let i = 0; i < 60; i++) {
@@ -57,6 +64,8 @@ function generateMockRecords(): WaitRecord[] {
     const hour = 6 + Math.floor(Math.random() * 16);
     const minute = Math.floor(Math.random() * 60);
     const duration = 30 + Math.floor(Math.random() * 150);
+    const tag = tags[Math.floor(Math.random() * tags.length)];
+    const note = noteOptions[Math.floor(Math.random() * noteOptions.length)];
 
     const startTime = new Date(now);
     startTime.setDate(startTime.getDate() - daysAgo);
@@ -84,6 +93,8 @@ function generateMockRecords(): WaitRecord[] {
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
       timePeriod,
+      tag,
+      note,
     });
   }
 

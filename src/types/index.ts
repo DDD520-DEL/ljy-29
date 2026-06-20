@@ -12,6 +12,8 @@ export interface Intersection {
   createdAt: string;
 }
 
+export type Tag = 'rushing' | 'pickup' | 'commute' | 'school' | 'shopping' | 'leisure';
+
 export interface WaitRecord {
   id: string;
   intersectionId: string;
@@ -21,6 +23,8 @@ export interface WaitRecord {
   startTime: string;
   endTime: string;
   timePeriod: TimePeriod;
+  note?: string;
+  tag?: Tag;
 }
 
 export interface IntersectionStats {
@@ -45,3 +49,21 @@ export const TIME_PERIOD_LABELS: Record<TimePeriod, string> = {
   flat: '平峰',
   night: '夜间',
 };
+
+export const TAG_LABELS: Record<Tag, string> = {
+  rushing: '赶时间',
+  pickup: '接送孩子',
+  commute: '通勤日常',
+  school: '上下学',
+  shopping: '购物出行',
+  leisure: '休闲散步',
+};
+
+export const TAG_OPTIONS: { value: Tag; label: string }[] = [
+  { value: 'rushing', label: '赶时间' },
+  { value: 'pickup', label: '接送孩子' },
+  { value: 'commute', label: '通勤日常' },
+  { value: 'school', label: '上下学' },
+  { value: 'shopping', label: '购物出行' },
+  { value: 'leisure', label: '休闲散步' },
+];

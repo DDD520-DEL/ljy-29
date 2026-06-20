@@ -1,15 +1,16 @@
 import { useState, useMemo } from 'react';
-import { Search, Filter, Trash2, Calendar, MapPin } from 'lucide-react';
+import { Search, Filter, Trash2, Calendar, MapPin, Tag } from 'lucide-react';
 import { RecordCard } from '@/components/RecordCard';
 import { StatsOverview } from '@/components/StatsOverview';
 import { useDataStore } from '@/store/useDataStore';
-import { TimePeriod, TIME_PERIOD_LABELS } from '@/types';
+import { TimePeriod, TIME_PERIOD_LABELS, TAG_OPTIONS, Tag as TagType } from '@/types';
 
 export default function RecordsPage() {
   const { records, intersections, clearAllRecords } = useDataStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIntersection, setSelectedIntersection] = useState<string>('all');
   const [selectedPeriod, setSelectedPeriod] = useState<string>('all');
+  const [selectedTag, setSelectedTag] = useState<string>('all');
   const [showFilters, setShowFilters] = useState(false);
 
   const filteredRecords = useMemo(() => {
@@ -23,9 +24,12 @@ export default function RecordsPage() {
       if (selectedPeriod !== 'all' && record.timePeriod !== selectedPeriod) {
         return false;
       }
+      if (selectedTag !== 'all' && record.tag !== selectedTag) {
+        return false;
+      }
       return true;
     });
-  }, [records, searchQuery, selectedIntersection, selectedPeriod]);
+  }, [records, searchQuery, selectedIntersection, selectedPeriod, selectedTag]);
 
   const stats = useMemo(() => {
     if (filteredRecords.length === 0) {
@@ -47,6 +51,8 @@ export default function RecordsPage() {
       clearAllRecords();
     }
   };
+
+  const hasActiveFilter = selectedIntersection !== 'all' || selectedPeriod !== 'all' || selectedTag !== 'all';
 
   return (
     <div className="min-h-screen pb-24">
@@ -98,7 +104,7 @@ export default function RecordsPage() {
           >
             <Filter className="w-4 h-4" />
             筛选
-            {selectedIntersection !== 'all' || selectedPeriod !== 'all' ? (
+            {hasActiveFilter ? (
               <span className="w-2 h-2 rounded-full bg-amber-500"></span>
             ) : null}
           </button>
@@ -140,6 +146,29 @@ export default function RecordsPage() {
                       }`}
                     >
                       {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2 text-sm text-slate-300 mb-2">
+                  <Tag className="w-4 h-4" />
+                  标签
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {TAG_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setSelectedTag(selectedTag === option.value ? 'all' : option.value)}
+                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                        selectedTag === option.value
+                          ? 'bg-amber-500 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                    >
+                      {option.label}
                     </button>
                   ))}
                 </div>

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Intersection, WaitRecord, Direction, TimerStatus, TimePeriod } from '@/types';
+import { Intersection, WaitRecord, Direction, TimerStatus, TimePeriod, Tag } from '@/types';
 import { generateId, getTimePeriodFromDate } from '@/utils/timeUtils';
 import { mockIntersections, mockRecords } from '@/data/mockData';
 
@@ -15,6 +15,7 @@ interface DataState {
   startTime: string | null;
   timerIntervalId: number | null;
   lastSaveResult: SaveResult;
+  pendingRecord: Omit<WaitRecord, 'id' | 'note' | 'tag'> | null;
 
   initData: () => void;
   setSelectedIntersection: (id: string | null) => void;
@@ -25,6 +26,7 @@ interface DataState {
   resetTimer: () => void;
   tick: () => void;
 
+  confirmSaveRecord: (note: string, tag: Tag | undefined) => void;
   addRecord: (record: Omit<WaitRecord, 'id'>) => void;
   deleteRecord: (id: string) => void;
   clearAllRecords: () => void;
@@ -64,6 +66,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   startTime: null,
   timerIntervalId: null,
   lastSaveResult: null,
+  pendingRecord: null,
 
   initData: () => {
     const storedIntersections = loadFromStorage<Intersection[]>(STORAGE_KEY_INTERSECTIONS, []);
@@ -116,35 +119,33 @@ export const useDataStore = create<DataState>((set, get) => ({
       clearInterval(timerIntervalId);
     }
 
-    let saveResult: SaveResult = 'too_short';
-
     if (selectedIntersectionId && selectedDirection && startTime && elapsedSeconds > 0) {
       const intersection = intersections.find(i => i.id === selectedIntersectionId);
       const endTime = new Date().toISOString();
       const timePeriod = getTimePeriodFromDate(new Date(startTime));
 
-      const newRecord: WaitRecord = {
-        id: generateId(),
-        intersectionId: selectedIntersectionId,
-        intersectionName: intersection?.name || '',
-        direction: selectedDirection,
-        duration: elapsedSeconds,
-        startTime,
-        endTime,
-        timePeriod,
-      };
-
-      const records = [newRecord, ...get().records];
-      set({ records });
-      saveToStorage(STORAGE_KEY_RECORDS, records);
-      saveResult = 'success';
+      set({
+        timerStatus: 'stopped',
+        timerIntervalId: null,
+        lastSaveResult: null,
+        pendingRecord: {
+          intersectionId: selectedIntersectionId,
+          intersectionName: intersection?.name || '',
+          direction: selectedDirection,
+          duration: elapsedSeconds,
+          startTime,
+          endTime,
+          timePeriod,
+        },
+      });
+    } else {
+      set({
+        timerStatus: 'stopped',
+        timerIntervalId: null,
+        lastSaveResult: 'too_short',
+        pendingRecord: null,
+      });
     }
-
-    set({
-      timerStatus: 'stopped',
-      timerIntervalId: null,
-      lastSaveResult: saveResult,
-    });
   },
 
   resetTimer: () => {
@@ -158,11 +159,32 @@ export const useDataStore = create<DataState>((set, get) => ({
       startTime: null,
       timerIntervalId: null,
       lastSaveResult: null,
+      pendingRecord: null,
     });
   },
 
   tick: () => {
     set((state) => ({ elapsedSeconds: state.elapsedSeconds + 1 }));
+  },
+
+  confirmSaveRecord: (note, tag) => {
+    const { pendingRecord } = get();
+    if (!pendingRecord) return;
+
+    const newRecord: WaitRecord = {
+      id: generateId(),
+      ...pendingRecord,
+      note: note || undefined,
+      tag,
+    };
+
+    const records = [newRecord, ...get().records];
+    set({
+      records,
+      lastSaveResult: 'success',
+      pendingRecord: null,
+    });
+    saveToStorage(STORAGE_KEY_RECORDS, records);
   },
 
   addRecord: (record) => {
