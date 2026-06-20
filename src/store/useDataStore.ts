@@ -57,6 +57,8 @@ interface DataState {
   getCheckInReward: () => CheckInReward;
   isTodayCheckedIn: () => boolean;
   ensureTodayCheckIn: () => void;
+  recalculateCheckInForDate: (dateStr: string) => void;
+  recalculateCheckInsForDates: (dateStrs: string[]) => void;
 }
 
 const STORAGE_KEY_INTERSECTIONS = 'traffic_light_intersections';
@@ -306,20 +308,30 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   deleteRecord: (id) => {
+    const targetRecord = get().records.find(r => r.id === id);
     const records = get().records.filter(r => r.id !== id);
     set({ records });
     saveToStorage(STORAGE_KEY_RECORDS, records);
+    if (targetRecord) {
+      get().recalculateCheckInForDate(formatDate(targetRecord.startTime));
+    }
   },
 
   clearAllRecords: () => {
-    set({ records: [] });
+    set({ records: [], checkInRecords: [] });
     saveToStorage(STORAGE_KEY_RECORDS, []);
+    saveToStorage(STORAGE_KEY_CHECKINS, []);
   },
 
   bulkDeleteRecords: (ids) => {
+    const targetRecords = get().records.filter(r => ids.includes(r.id));
+    const affectedDates = targetRecords.map(r => formatDate(r.startTime));
     const records = get().records.filter(r => !ids.includes(r.id));
     set({ records });
     saveToStorage(STORAGE_KEY_RECORDS, records);
+    if (affectedDates.length > 0) {
+      get().recalculateCheckInsForDates(affectedDates);
+    }
   },
 
   bulkUpdateIntersection: (ids, intersectionId, intersectionName) => {
@@ -452,16 +464,15 @@ export const useDataStore = create<DataState>((set, get) => ({
     saveToStorage(STORAGE_KEY_REMINDERS, reminders);
   },
 
-  ensureTodayCheckIn: () => {
-    const todayStr = formatDate(new Date().toISOString());
-    const todayRecords = get().records.filter(r => formatDate(r.startTime) === todayStr);
-    const recordCount = todayRecords.length;
-    const totalDuration = todayRecords.reduce((sum, r) => sum + r.duration, 0);
+  recalculateCheckInForDate: (dateStr) => {
+    const dateRecords = get().records.filter(r => formatDate(r.startTime) === dateStr);
+    const recordCount = dateRecords.length;
+    const totalDuration = dateRecords.reduce((sum, r) => sum + r.duration, 0);
     const checkedIn = recordCount > 0;
 
-    const existingIndex = get().checkInRecords.findIndex(c => c.date === todayStr);
+    const existingIndex = get().checkInRecords.findIndex(c => c.date === dateStr);
     const newRecord: CheckInRecord = {
-      date: todayStr,
+      date: dateStr,
       checkedIn,
       recordCount,
       totalDuration,
@@ -469,14 +480,32 @@ export const useDataStore = create<DataState>((set, get) => ({
 
     let checkInRecords;
     if (existingIndex >= 0) {
-      checkInRecords = [...get().checkInRecords];
-      checkInRecords[existingIndex] = newRecord;
-    } else {
+      if (recordCount > 0) {
+        checkInRecords = [...get().checkInRecords];
+        checkInRecords[existingIndex] = newRecord;
+      } else {
+        checkInRecords = get().checkInRecords.filter(c => c.date !== dateStr);
+      }
+    } else if (recordCount > 0) {
       checkInRecords = [...get().checkInRecords, newRecord];
+    } else {
+      return;
     }
 
     set({ checkInRecords });
     saveToStorage(STORAGE_KEY_CHECKINS, checkInRecords);
+  },
+
+  recalculateCheckInsForDates: (dateStrs) => {
+    const uniqueDates = Array.from(new Set(dateStrs));
+    uniqueDates.forEach(dateStr => {
+      get().recalculateCheckInForDate(dateStr);
+    });
+  },
+
+  ensureTodayCheckIn: () => {
+    const todayStr = formatDate(new Date().toISOString());
+    get().recalculateCheckInForDate(todayStr);
   },
 
   isTodayCheckedIn: () => {

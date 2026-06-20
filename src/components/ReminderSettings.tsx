@@ -155,14 +155,12 @@ export function ReminderSettings() {
               <button
                 type="button"
                 onClick={() => setNewVibrate(!newVibrate)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${
+                className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
                   newVibrate ? 'bg-amber-500' : 'bg-slate-600'
                 }`}
               >
                 <span
-                  className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                    newVibrate ? 'translate-x-5.5 left-0.5' : 'left-0.5'
-                  }`}
+                  className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ease-out"
                   style={{ transform: newVibrate ? 'translateX(22px)' : 'translateX(0)' }}
                 />
               </button>
@@ -198,12 +196,12 @@ export function ReminderSettings() {
                     <button
                       type="button"
                       onClick={() => updateReminder(reminder.id, { enabled: !reminder.enabled })}
-                      className={`relative w-11 h-6 rounded-full transition-colors ${
+                      className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
                         reminder.enabled ? 'bg-green-500' : 'bg-slate-600'
                       }`}
                     >
                       <span
-                        className="absolute top-0.5 w-5 h-5 bg-white rounded-full transition-transform left-0.5"
+                        className="absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ease-out"
                         style={{ transform: reminder.enabled ? 'translateX(22px)' : 'translateX(0)' }}
                       />
                     </button>
