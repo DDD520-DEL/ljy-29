@@ -5,6 +5,14 @@ import { mockIntersections, mockRecords } from '@/data/mockData';
 
 export type SaveResult = 'success' | 'too_short' | null;
 
+export type SortOption = 'newest' | 'oldest' | 'duration_desc' | 'duration_asc';
+
+interface Settings {
+  autoResetTimer: boolean;
+  defaultTimePeriod: string;
+  defaultSort: SortOption;
+}
+
 interface DataState {
   intersections: Intersection[];
   records: WaitRecord[];
@@ -20,6 +28,7 @@ interface DataState {
   pendingRecord: Omit<WaitRecord, 'id' | 'note' | 'tag'> | null;
   reminders: DailyReminder[];
   checkInRecords: CheckInRecord[];
+  settings: Settings;
 
   initData: () => void;
   setSelectedIntersection: (id: string | null) => void;
@@ -59,6 +68,9 @@ interface DataState {
   ensureTodayCheckIn: () => void;
   recalculateCheckInForDate: (dateStr: string) => void;
   recalculateCheckInsForDates: (dateStrs: string[]) => void;
+
+  updateSettings: (settings: Partial<Settings>) => void;
+  clearAllData: () => void;
 }
 
 const STORAGE_KEY_INTERSECTIONS = 'traffic_light_intersections';
@@ -66,6 +78,13 @@ const STORAGE_KEY_RECORDS = 'traffic_light_records';
 const STORAGE_KEY_GROUPS = 'traffic_light_groups';
 const STORAGE_KEY_REMINDERS = 'traffic_light_reminders';
 const STORAGE_KEY_CHECKINS = 'traffic_light_checkins';
+const STORAGE_KEY_SETTINGS = 'traffic_light_settings';
+
+const defaultSettings: Settings = {
+  autoResetTimer: false,
+  defaultTimePeriod: 'all',
+  defaultSort: 'newest',
+};
 
 const mockGroups: IntersectionGroup[] = [
   {
@@ -137,6 +156,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   pendingRecord: null,
   reminders: [],
   checkInRecords: [],
+  settings: defaultSettings,
 
   initData: () => {
     const storedIntersections = loadFromStorage<Intersection[]>(STORAGE_KEY_INTERSECTIONS, []);
@@ -144,6 +164,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     const storedGroups = loadFromStorage<IntersectionGroup[]>(STORAGE_KEY_GROUPS, []);
     const storedReminders = loadFromStorage<DailyReminder[]>(STORAGE_KEY_REMINDERS, []);
     const storedCheckIns = loadFromStorage<CheckInRecord[]>(STORAGE_KEY_CHECKINS, []);
+    const storedSettings = loadFromStorage<Settings>(STORAGE_KEY_SETTINGS, defaultSettings);
 
     const intersections = storedIntersections.length > 0 ? storedIntersections : mockIntersections;
     const records = storedRecords.length > 0 ? storedRecords : mockRecords;
@@ -163,12 +184,18 @@ export const useDataStore = create<DataState>((set, get) => ({
       saveToStorage(STORAGE_KEY_REMINDERS, defaultReminders);
     }
 
+    const settings = storedSettings || defaultSettings;
+    if (!storedSettings) {
+      saveToStorage(STORAGE_KEY_SETTINGS, defaultSettings);
+    }
+
     set({
       intersections,
       records,
       groups,
       reminders,
       checkInRecords: storedCheckIns,
+      settings,
       selectedIntersectionId: intersections.length > 0 ? intersections[0].id : null,
       selectedDirection: 'east',
     });
@@ -556,5 +583,37 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (streak >= 7) return '7days';
     if (streak >= 3) return '3days';
     return 'none';
+  },
+
+  updateSettings: (newSettings) => {
+    const settings = { ...get().settings, ...newSettings };
+    set({ settings });
+    saveToStorage(STORAGE_KEY_SETTINGS, settings);
+  },
+
+  clearAllData: () => {
+    set({
+      records: [],
+      checkInRecords: [],
+      intersections: [],
+      groups: [],
+      reminders: [],
+      settings: defaultSettings,
+      timerStatus: 'idle',
+      elapsedSeconds: 0,
+      isOverLimit: false,
+      selectedIntersectionId: null,
+      selectedDirection: null,
+      startTime: null,
+      timerIntervalId: null,
+      lastSaveResult: null,
+      pendingRecord: null,
+    });
+    saveToStorage(STORAGE_KEY_RECORDS, []);
+    saveToStorage(STORAGE_KEY_CHECKINS, []);
+    saveToStorage(STORAGE_KEY_INTERSECTIONS, []);
+    saveToStorage(STORAGE_KEY_GROUPS, []);
+    saveToStorage(STORAGE_KEY_REMINDERS, []);
+    saveToStorage(STORAGE_KEY_SETTINGS, defaultSettings);
   },
 }));

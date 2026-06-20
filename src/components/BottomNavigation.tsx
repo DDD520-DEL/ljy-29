@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Timer, ListTodo, BarChart3, MapPin, User } from 'lucide-react';
+import { Timer, ListTodo, BarChart3, MapPin, User, Settings } from 'lucide-react';
 
 export function BottomNavigation() {
   const navItems = [
@@ -8,6 +8,7 @@ export function BottomNavigation() {
     { to: '/analysis', label: '分析', icon: BarChart3 },
     { to: '/intersections', label: '路口', icon: MapPin },
     { to: '/profile', label: '我的', icon: User },
+    { to: '/settings', label: '设置', icon: Settings },
   ];
 
   return (

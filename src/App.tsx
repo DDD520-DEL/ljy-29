@@ -6,6 +6,7 @@ import AnalysisPage from "@/pages/AnalysisPage";
 import ComparisonPage from "@/pages/ComparisonPage";
 import IntersectionsPage from "@/pages/IntersectionsPage";
 import ProfilePage from "@/pages/ProfilePage";
+import SettingsPage from "@/pages/SettingsPage";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { useDataStore } from "@/store/useDataStore";
 import { useNotification } from "@/hooks/useNotification";
@@ -28,6 +29,7 @@ function AppContent() {
         <Route path="/comparison" element={<ComparisonPage />} />
         <Route path="/intersections" element={<IntersectionsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/settings" element={<SettingsPage />} />
       </Routes>
       <BottomNavigation />
     </div>
