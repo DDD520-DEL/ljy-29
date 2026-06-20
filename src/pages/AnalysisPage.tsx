@@ -70,7 +70,7 @@ export default function AnalysisPage() {
   }, [baseFilteredRecords, groups]);
 
   const intersectionStats = useMemo(() => {
-    const statsMap = new Map<string, { name: string; total: number; count: number; max: number }>();
+    const statsMap = new Map<string, { name: string; total: number; count: number; max: number; overLimitCount: number }>();
 
     filteredRecords.forEach((record) => {
       const existing = statsMap.get(record.intersectionId);
@@ -78,12 +78,16 @@ export default function AnalysisPage() {
         existing.total += record.duration;
         existing.count += 1;
         existing.max = Math.max(existing.max, record.duration);
+        if (record.isOverLimit) {
+          existing.overLimitCount += 1;
+        }
       } else {
         statsMap.set(record.intersectionId, {
           name: record.intersectionName,
           total: record.duration,
           count: 1,
           max: record.duration,
+          overLimitCount: record.isOverLimit ? 1 : 0,
         });
       }
     });
@@ -95,6 +99,8 @@ export default function AnalysisPage() {
         avg: Math.round(data.total / data.count),
         count: data.count,
         max: data.max,
+        overLimitCount: data.overLimitCount,
+        overLimitRate: data.count > 0 ? Math.round((data.overLimitCount / data.count) * 100) : 0,
       }))
       .sort((a, b) => b.avg - a.avg);
   }, [filteredRecords]);
@@ -182,6 +188,11 @@ export default function AnalysisPage() {
   const worstGroup = groupStats[0];
   const overallAvg = filteredRecords.length > 0
     ? Math.round(filteredRecords.reduce((sum, r) => sum + r.duration, 0) / filteredRecords.length)
+    : 0;
+
+  const totalOverLimitCount = filteredRecords.filter(r => r.isOverLimit).length;
+  const overallOverLimitRate = filteredRecords.length > 0
+    ? Math.round((totalOverLimitCount / filteredRecords.length) * 100)
     : 0;
 
   const computeRankingItems = (days: number, allRecords: typeof records): RankItem[] => {
@@ -356,13 +367,18 @@ export default function AnalysisPage() {
               <span className="text-red-400 font-medium">最不合理路口</span>
             </div>
             <div className="text-xl font-bold text-white mb-1">{worstIntersection.name}</div>
-            <div className="flex items-center gap-4 text-sm">
+            <div className="flex items-center gap-4 text-sm flex-wrap">
               <span className="text-slate-300">
                 平均等待 <span className="text-red-400 font-bold">{worstIntersection.avg}</span> 秒
               </span>
               <span className="text-slate-400">
                 {worstIntersection.count} 次记录
               </span>
+              {worstIntersection.overLimitCount > 0 && (
+                <span className="text-orange-400">
+                  超限 {worstIntersection.overLimitCount} 次 ({worstIntersection.overLimitRate}%)
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -402,6 +418,24 @@ export default function AnalysisPage() {
             </div>
             <div className="text-3xl font-bold text-white">
               {filteredRecords.length}<span className="text-sm font-normal text-slate-400 ml-1">条</span>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 rounded-xl p-4 border border-orange-500/30">
+            <div className="flex items-center gap-2 text-orange-400 text-sm mb-2">
+              <AlertTriangle className="w-4 h-4" />
+              超限次数
+            </div>
+            <div className="text-3xl font-bold text-orange-400">
+              {totalOverLimitCount}<span className="text-sm font-normal text-slate-400 ml-1">次</span>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 rounded-xl p-4 border border-orange-500/30">
+            <div className="flex items-center gap-2 text-orange-400 text-sm mb-2">
+              <TrendingUp className="w-4 h-4" />
+              超限率
+            </div>
+            <div className="text-3xl font-bold text-orange-400">
+              {overallOverLimitRate}<span className="text-sm font-normal text-slate-400 ml-1">%</span>
             </div>
           </div>
         </div>
@@ -543,6 +577,57 @@ export default function AnalysisPage() {
             ) : (
               <div className="h-64 flex items-center justify-center text-slate-500">
                 暂无数据
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-orange-400" />
+            路口超限次数排名
+          </h2>
+          <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+            {intersectionStats.filter(s => s.overLimitCount > 0).length > 0 ? (
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={intersectionStats.filter(s => s.overLimitCount > 0).sort((a, b) => b.overLimitCount - a.overLimitCount).slice(0, 6)}
+                    layout="vertical"
+                    margin={{ left: 20, right: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
+                    <XAxis type="number" stroke="#94a3b8" fontSize={12} />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      stroke="#94a3b8"
+                      fontSize={11}
+                      width={100}
+                      tickFormatter={(value) => value.length > 8 ? value.slice(0, 8) + '...' : value}
+                    />
+                    <Tooltip
+                      content={({ active, payload, label }: any) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-xl">
+                              <p className="text-white font-medium">{label}</p>
+                              <p className="text-sm text-orange-400">超限次数: {data.overLimitCount}次</p>
+                              <p className="text-sm text-slate-400">超限率: {data.overLimitRate}%</p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar dataKey="overLimitCount" name="超限次数" fill="#f97316" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-64 flex items-center justify-center text-slate-500">
+                暂无超限数据
               </div>
             )}
           </div>

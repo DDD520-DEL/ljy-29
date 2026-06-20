@@ -1,4 +1,4 @@
-import { Trash2, Tag, FileText } from 'lucide-react';
+import { Trash2, Tag, FileText, AlertTriangle } from 'lucide-react';
 import { WaitRecord, TIME_PERIOD_LABELS, TAG_LABELS } from '@/types';
 import { formatDurationWithHours, formatDateTime, getDirectionLabel, getDirectionEmoji } from '@/utils/timeUtils';
 import { useDataStore } from '@/store/useDataStore';
@@ -23,13 +23,20 @@ export function RecordCard({ record }: RecordCardProps) {
   };
 
   return (
-    <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 hover:border-slate-600 transition-all">
+    <div className={`bg-slate-800/50 rounded-xl p-4 border transition-all hover:border-slate-600 ${
+      record.isOverLimit ? 'border-orange-500/50' : 'border-slate-700/50'}`}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
             <span className={`text-2xl font-bold font-mono ${getDurationColor(record.duration)}`}>
               {formatDurationWithHours(record.duration)}
             </span>
+            {record.isOverLimit && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs font-medium">
+                <AlertTriangle className="w-3 h-3" />
+                超限
+              </span>
+            )}
             <span className="text-slate-500 text-sm">
               {getDirectionEmoji(record.direction)} {getDirectionLabel(record.direction)}方向
             </span>

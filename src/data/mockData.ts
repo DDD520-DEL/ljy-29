@@ -6,6 +6,7 @@ export const mockIntersections: Intersection[] = [
     name: '人民大道与中山街交叉口',
     area: '市中心',
     note: '主要商业区路口',
+    reasonableWaitTime: 90,
     createdAt: '2025-01-15T08:00:00.000Z',
   },
   {
@@ -13,6 +14,7 @@ export const mockIntersections: Intersection[] = [
     name: '长安街与建国路交叉口',
     area: '东城区',
     note: '早高峰拥堵严重',
+    reasonableWaitTime: 120,
     createdAt: '2025-01-16T09:30:00.000Z',
   },
   {
@@ -20,6 +22,7 @@ export const mockIntersections: Intersection[] = [
     name: '解放大道与和平路交叉口',
     area: '西城区',
     note: '学校附近，上下学时段拥堵',
+    reasonableWaitTime: 75,
     createdAt: '2025-01-17T14:20:00.000Z',
   },
   {
@@ -27,6 +30,7 @@ export const mockIntersections: Intersection[] = [
     name: '科技大道与创新路交叉口',
     area: '高新区',
     note: '产业园核心区域',
+    reasonableWaitTime: 80,
     createdAt: '2025-01-18T11:00:00.000Z',
   },
   {
@@ -34,6 +38,7 @@ export const mockIntersections: Intersection[] = [
     name: '滨河路与园林街交叉口',
     area: '南城区',
     note: '靠近公园，周末人流大',
+    reasonableWaitTime: 60,
     createdAt: '2025-01-19T16:45:00.000Z',
   },
   {
@@ -41,6 +46,7 @@ export const mockIntersections: Intersection[] = [
     name: '火车站前广场路口',
     area: '火车站',
     note: '交通枢纽，全天流量大',
+    reasonableWaitTime: 150,
     createdAt: '2025-01-20T10:15:00.000Z',
   },
 ];
@@ -84,6 +90,10 @@ function generateMockRecords(): WaitRecord[] {
       timePeriod = 'night';
     }
 
+    const isOverLimit = intersection.reasonableWaitTime !== undefined
+      && intersection.reasonableWaitTime > 0
+      && duration >= intersection.reasonableWaitTime;
+
     records.push({
       id: `rec_${1000 + i}`,
       intersectionId: intersection.id,
@@ -95,6 +105,7 @@ function generateMockRecords(): WaitRecord[] {
       timePeriod,
       tag,
       note,
+      isOverLimit,
     });
   }
 

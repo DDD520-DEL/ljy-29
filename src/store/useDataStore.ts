@@ -11,6 +11,7 @@ interface DataState {
   groups: IntersectionGroup[];
   timerStatus: TimerStatus;
   elapsedSeconds: number;
+  isOverLimit: boolean;
   selectedIntersectionId: string | null;
   selectedDirection: Direction | null;
   startTime: string | null;
@@ -26,6 +27,7 @@ interface DataState {
   stopTimer: () => void;
   resetTimer: () => void;
   tick: () => void;
+  triggerVibration: () => void;
 
   confirmSaveRecord: (note: string, tag: Tag | undefined) => void;
   addRecord: (record: Omit<WaitRecord, 'id'>) => void;
@@ -90,6 +92,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   groups: [],
   timerStatus: 'idle',
   elapsedSeconds: 0,
+  isOverLimit: false,
   selectedIntersectionId: null,
   selectedDirection: null,
   startTime: null,
@@ -142,13 +145,14 @@ export const useDataStore = create<DataState>((set, get) => ({
       timerStatus: 'running',
       startTime,
       elapsedSeconds: 0,
+      isOverLimit: false,
       timerIntervalId: intervalId,
       lastSaveResult: null,
     });
   },
 
   stopTimer: () => {
-    const { timerIntervalId, elapsedSeconds, selectedIntersectionId, selectedDirection, startTime, intersections } = get();
+    const { timerIntervalId, elapsedSeconds, selectedIntersectionId, selectedDirection, startTime, intersections, isOverLimit } = get();
 
     if (timerIntervalId) {
       clearInterval(timerIntervalId);
@@ -171,6 +175,7 @@ export const useDataStore = create<DataState>((set, get) => ({
           startTime,
           endTime,
           timePeriod,
+          isOverLimit,
         },
       });
     } else {
@@ -191,6 +196,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     set({
       timerStatus: 'idle',
       elapsedSeconds: 0,
+      isOverLimit: false,
       startTime: null,
       timerIntervalId: null,
       lastSaveResult: null,
@@ -199,7 +205,27 @@ export const useDataStore = create<DataState>((set, get) => ({
   },
 
   tick: () => {
-    set((state) => ({ elapsedSeconds: state.elapsedSeconds + 1 }));
+    const { selectedIntersectionId, intersections, isOverLimit, triggerVibration } = get();
+    const newElapsedSeconds = get().elapsedSeconds + 1;
+
+    const intersection = intersections.find(i => i.id === selectedIntersectionId);
+    const threshold = intersection?.reasonableWaitTime;
+    const newIsOverLimit = threshold !== undefined && threshold > 0 && newElapsedSeconds >= threshold;
+
+    if (newIsOverLimit && !isOverLimit) {
+      triggerVibration();
+    }
+
+    set({
+      elapsedSeconds: newElapsedSeconds,
+      isOverLimit: newIsOverLimit,
+    });
+  },
+
+  triggerVibration: () => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate([200, 100, 200, 100, 200]);
+    }
   },
 
   confirmSaveRecord: (note, tag) => {

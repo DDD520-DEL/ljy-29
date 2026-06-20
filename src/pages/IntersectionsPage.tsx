@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Edit2, Trash2, MapPin, X, Save, FolderPlus, Check, Folder } from 'lucide-react';
+import { Plus, Edit2, Trash2, MapPin, X, Save, FolderPlus, Check, Folder, Clock } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
 import { Intersection, IntersectionGroup, GROUP_COLORS } from '@/types';
 
@@ -13,7 +13,7 @@ export default function IntersectionsPage() {
 
   const [showIntersectionForm, setShowIntersectionForm] = useState(false);
   const [editingIntersectionId, setEditingIntersectionId] = useState<string | null>(null);
-  const [intersectionFormData, setIntersectionFormData] = useState({ name: '', area: '', note: '' });
+  const [intersectionFormData, setIntersectionFormData] = useState({ name: '', area: '', note: '', reasonableWaitTime: '' });
 
   const [showGroupForm, setShowGroupForm] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
@@ -31,7 +31,7 @@ export default function IntersectionsPage() {
 
   const handleAddIntersection = () => {
     setEditingIntersectionId(null);
-    setIntersectionFormData({ name: '', area: '', note: '' });
+    setIntersectionFormData({ name: '', area: '', note: '', reasonableWaitTime: '' });
     setShowIntersectionForm(true);
   };
 
@@ -41,6 +41,7 @@ export default function IntersectionsPage() {
       name: intersection.name,
       area: intersection.area,
       note: intersection.note || '',
+      reasonableWaitTime: intersection.reasonableWaitTime?.toString() || '',
     });
     setShowIntersectionForm(true);
   };
@@ -59,19 +60,28 @@ export default function IntersectionsPage() {
     e.preventDefault();
     if (!intersectionFormData.name.trim() || !intersectionFormData.area.trim()) return;
 
+    const submitData = {
+      name: intersectionFormData.name,
+      area: intersectionFormData.area,
+      note: intersectionFormData.note || undefined,
+      reasonableWaitTime: intersectionFormData.reasonableWaitTime
+        ? parseInt(intersectionFormData.reasonableWaitTime, 10)
+        : undefined,
+    };
+
     if (editingIntersectionId) {
-      updateIntersection(editingIntersectionId, intersectionFormData);
+      updateIntersection(editingIntersectionId, submitData);
     } else {
-      addIntersection(intersectionFormData);
+      addIntersection(submitData);
     }
     setShowIntersectionForm(false);
-    setIntersectionFormData({ name: '', area: '', note: '' });
+    setIntersectionFormData({ name: '', area: '', note: '', reasonableWaitTime: '' });
     setEditingIntersectionId(null);
   };
 
   const handleCancelIntersection = () => {
     setShowIntersectionForm(false);
-    setIntersectionFormData({ name: '', area: '', note: '' });
+    setIntersectionFormData({ name: '', area: '', note: '', reasonableWaitTime: '' });
     setEditingIntersectionId(null);
   };
 
@@ -218,6 +228,22 @@ export default function IntersectionsPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-300 mb-1">
+                      合理等待时长（秒）
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={intersectionFormData.reasonableWaitTime}
+                      onChange={(e) => setIntersectionFormData({ ...intersectionFormData, reasonableWaitTime: e.target.value })}
+                      placeholder="例如：90，不设置则不启用超限提醒"
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-amber-500"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">
+                      超过该时长将显示超限提醒并触发振动（移动端）
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">
                       备注
                     </label>
                     <textarea
@@ -267,6 +293,12 @@ export default function IntersectionsPage() {
                         <div className="text-sm text-slate-400">{intersection.area}</div>
                         {intersection.note && (
                           <div className="text-xs text-slate-500 mt-1">{intersection.note}</div>
+                        )}
+                        {intersection.reasonableWaitTime !== undefined && intersection.reasonableWaitTime > 0 && (
+                          <div className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            合理等待 {intersection.reasonableWaitTime} 秒
+                          </div>
                         )}
                         {intersectionGroups.length > 0 && (
                           <div className="flex flex-wrap gap-1.5 mt-2">

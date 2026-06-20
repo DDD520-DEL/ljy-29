@@ -8,7 +8,10 @@ import { useDataStore } from '@/store/useDataStore';
 import { TAG_OPTIONS, Tag as TagType } from '@/types';
 
 export default function TimerPage() {
-  const { timerStatus, elapsedSeconds, selectedIntersectionId, selectedDirection, lastSaveResult, pendingRecord, startTimer, stopTimer, resetTimer, confirmSaveRecord } = useDataStore();
+  const { timerStatus, elapsedSeconds, isOverLimit, selectedIntersectionId, selectedDirection, lastSaveResult, pendingRecord, intersections, startTimer, stopTimer, resetTimer, confirmSaveRecord } = useDataStore();
+
+  const currentIntersection = intersections.find(i => i.id === selectedIntersectionId);
+  const reasonableWaitTime = currentIntersection?.reasonableWaitTime;
 
   const [note, setNote] = useState('');
   const [selectedTag, setSelectedTag] = useState<TagType | undefined>(undefined);
@@ -42,8 +45,21 @@ export default function TimerPage() {
         </div>
 
         <div className="mb-8">
-          <TimerDisplay seconds={elapsedSeconds} status={timerStatus} />
+          <TimerDisplay seconds={elapsedSeconds} status={timerStatus} isOverLimit={isOverLimit} />
         </div>
+
+        {timerStatus === 'running' && reasonableWaitTime !== undefined && reasonableWaitTime > 0 && (
+          <div className="mb-6 text-center">
+            <span className="text-sm text-slate-400">
+              合理等待时长：<span className="text-amber-400 font-medium">{reasonableWaitTime}秒</span>
+              {isOverLimit && (
+                <span className="ml-2 text-red-400 font-bold">
+                  (已超出 {elapsedSeconds - reasonableWaitTime} 秒)
+                </span>
+              )}
+            </span>
+          </div>
+        )}
 
         <div className="flex justify-center gap-4 mb-8">
           {timerStatus === 'idle' && (

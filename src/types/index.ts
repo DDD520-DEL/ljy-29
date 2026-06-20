@@ -9,6 +9,7 @@ export interface Intersection {
   name: string;
   area: string;
   note?: string;
+  reasonableWaitTime?: number;
   createdAt: string;
 }
 
@@ -25,6 +26,7 @@ export interface WaitRecord {
   timePeriod: TimePeriod;
   note?: string;
   tag?: Tag;
+  isOverLimit?: boolean;
 }
 
 export interface IntersectionStats {
@@ -34,6 +36,8 @@ export interface IntersectionStats {
   avgDuration: number;
   maxDuration: number;
   minDuration: number;
+  overLimitCount: number;
+  overLimitRate: number;
 }
 
 export interface IntersectionGroup {
