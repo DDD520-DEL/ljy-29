@@ -135,3 +135,29 @@ export const GRADE_COLORS: Record<TimingScore['grade'], string> = {
   poor: '#f97316',
   very_poor: '#ef4444',
 };
+
+export interface DailyReminder {
+  id: string;
+  enabled: boolean;
+  hour: number;
+  minute: number;
+  label: string;
+  vibrate?: boolean;
+}
+
+export interface CheckInRecord {
+  date: string;
+  checkedIn: boolean;
+  recordCount: number;
+  totalDuration: number;
+}
+
+export type CheckInReward = 'none' | '3days' | '7days' | '14days' | '30days';
+
+export const CHECKIN_REWARD_LABELS: Record<CheckInReward, string> = {
+  none: '坚持打卡，获得奖励',
+  '3days': '连续3天 🌟',
+  '7days': '连续7天 🔥',
+  '14days': '连续14天 💪',
+  '30days': '连续30天 👑',
+};

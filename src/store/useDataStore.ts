@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { Intersection, WaitRecord, Direction, TimerStatus, TimePeriod, Tag, IntersectionGroup } from '@/types';
-import { generateId, getTimePeriodFromDate } from '@/utils/timeUtils';
+import { Intersection, WaitRecord, Direction, TimerStatus, Tag, IntersectionGroup, DailyReminder, CheckInRecord, CheckInReward } from '@/types';
+import { generateId, getTimePeriodFromDate, formatDate } from '@/utils/timeUtils';
 import { mockIntersections, mockRecords } from '@/data/mockData';
 
 export type SaveResult = 'success' | 'too_short' | null;
@@ -18,6 +18,8 @@ interface DataState {
   timerIntervalId: number | null;
   lastSaveResult: SaveResult;
   pendingRecord: Omit<WaitRecord, 'id' | 'note' | 'tag'> | null;
+  reminders: DailyReminder[];
+  checkInRecords: CheckInRecord[];
 
   initData: () => void;
   setSelectedIntersection: (id: string | null) => void;
@@ -46,11 +48,22 @@ interface DataState {
   addIntersectionToGroup: (groupId: string, intersectionId: string) => void;
   removeIntersectionFromGroup: (groupId: string, intersectionId: string) => void;
   toggleIntersectionInGroup: (groupId: string, intersectionId: string) => void;
+
+  addReminder: (reminder: Omit<DailyReminder, 'id'>) => void;
+  updateReminder: (id: string, data: Partial<DailyReminder>) => void;
+  deleteReminder: (id: string) => void;
+
+  getStreakDays: () => number;
+  getCheckInReward: () => CheckInReward;
+  isTodayCheckedIn: () => boolean;
+  ensureTodayCheckIn: () => void;
 }
 
 const STORAGE_KEY_INTERSECTIONS = 'traffic_light_intersections';
 const STORAGE_KEY_RECORDS = 'traffic_light_records';
 const STORAGE_KEY_GROUPS = 'traffic_light_groups';
+const STORAGE_KEY_REMINDERS = 'traffic_light_reminders';
+const STORAGE_KEY_CHECKINS = 'traffic_light_checkins';
 
 const mockGroups: IntersectionGroup[] = [
   {
@@ -88,6 +101,25 @@ function saveToStorage<T>(key: string, value: T) {
   }
 }
 
+const defaultReminders: DailyReminder[] = [
+  {
+    id: 'reminder_morning',
+    enabled: false,
+    hour: 7,
+    minute: 30,
+    label: '早高峰出发提醒',
+    vibrate: true,
+  },
+  {
+    id: 'reminder_evening',
+    enabled: false,
+    hour: 17,
+    minute: 30,
+    label: '晚高峰出发提醒',
+    vibrate: true,
+  },
+];
+
 export const useDataStore = create<DataState>((set, get) => ({
   intersections: [],
   records: [],
@@ -101,15 +133,20 @@ export const useDataStore = create<DataState>((set, get) => ({
   timerIntervalId: null,
   lastSaveResult: null,
   pendingRecord: null,
+  reminders: [],
+  checkInRecords: [],
 
   initData: () => {
     const storedIntersections = loadFromStorage<Intersection[]>(STORAGE_KEY_INTERSECTIONS, []);
     const storedRecords = loadFromStorage<WaitRecord[]>(STORAGE_KEY_RECORDS, []);
     const storedGroups = loadFromStorage<IntersectionGroup[]>(STORAGE_KEY_GROUPS, []);
+    const storedReminders = loadFromStorage<DailyReminder[]>(STORAGE_KEY_REMINDERS, []);
+    const storedCheckIns = loadFromStorage<CheckInRecord[]>(STORAGE_KEY_CHECKINS, []);
 
     const intersections = storedIntersections.length > 0 ? storedIntersections : mockIntersections;
     const records = storedRecords.length > 0 ? storedRecords : mockRecords;
     const groups = storedGroups.length > 0 ? storedGroups : mockGroups;
+    const reminders = storedReminders.length > 0 ? storedReminders : defaultReminders;
 
     if (storedIntersections.length === 0) {
       saveToStorage(STORAGE_KEY_INTERSECTIONS, mockIntersections);
@@ -120,21 +157,30 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (storedGroups.length === 0) {
       saveToStorage(STORAGE_KEY_GROUPS, mockGroups);
     }
+    if (storedReminders.length === 0) {
+      saveToStorage(STORAGE_KEY_REMINDERS, defaultReminders);
+    }
 
     set({
       intersections,
       records,
       groups,
+      reminders,
+      checkInRecords: storedCheckIns,
       selectedIntersectionId: intersections.length > 0 ? intersections[0].id : null,
       selectedDirection: 'east',
     });
+
+    setTimeout(() => {
+      get().ensureTodayCheckIn();
+    }, 100);
   },
 
   setSelectedIntersection: (id) => set({ selectedIntersectionId: id }),
   setSelectedDirection: (direction) => set({ selectedDirection: direction }),
 
   startTimer: () => {
-    const { selectedIntersectionId, selectedDirection, intersections } = get();
+    const { selectedIntersectionId, selectedDirection } = get();
     if (!selectedIntersectionId || !selectedDirection) return;
 
     const startTime = new Date().toISOString();
@@ -248,6 +294,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       pendingRecord: null,
     });
     saveToStorage(STORAGE_KEY_RECORDS, records);
+    get().ensureTodayCheckIn();
   },
 
   addRecord: (record) => {
@@ -255,6 +302,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     const records = [newRecord, ...get().records];
     set({ records });
     saveToStorage(STORAGE_KEY_RECORDS, records);
+    get().ensureTodayCheckIn();
   },
 
   deleteRecord: (id) => {
@@ -378,5 +426,106 @@ export const useDataStore = create<DataState>((set, get) => ({
     });
     set({ groups });
     saveToStorage(STORAGE_KEY_GROUPS, groups);
+  },
+
+  addReminder: (reminder) => {
+    const newReminder: DailyReminder = {
+      ...reminder,
+      id: generateId(),
+    };
+    const reminders = [...get().reminders, newReminder];
+    set({ reminders });
+    saveToStorage(STORAGE_KEY_REMINDERS, reminders);
+  },
+
+  updateReminder: (id, data) => {
+    const reminders = get().reminders.map(r =>
+      r.id === id ? { ...r, ...data } : r
+    );
+    set({ reminders });
+    saveToStorage(STORAGE_KEY_REMINDERS, reminders);
+  },
+
+  deleteReminder: (id) => {
+    const reminders = get().reminders.filter(r => r.id !== id);
+    set({ reminders });
+    saveToStorage(STORAGE_KEY_REMINDERS, reminders);
+  },
+
+  ensureTodayCheckIn: () => {
+    const todayStr = formatDate(new Date().toISOString());
+    const todayRecords = get().records.filter(r => formatDate(r.startTime) === todayStr);
+    const recordCount = todayRecords.length;
+    const totalDuration = todayRecords.reduce((sum, r) => sum + r.duration, 0);
+    const checkedIn = recordCount > 0;
+
+    const existingIndex = get().checkInRecords.findIndex(c => c.date === todayStr);
+    const newRecord: CheckInRecord = {
+      date: todayStr,
+      checkedIn,
+      recordCount,
+      totalDuration,
+    };
+
+    let checkInRecords;
+    if (existingIndex >= 0) {
+      checkInRecords = [...get().checkInRecords];
+      checkInRecords[existingIndex] = newRecord;
+    } else {
+      checkInRecords = [...get().checkInRecords, newRecord];
+    }
+
+    set({ checkInRecords });
+    saveToStorage(STORAGE_KEY_CHECKINS, checkInRecords);
+  },
+
+  isTodayCheckedIn: () => {
+    const todayStr = formatDate(new Date().toISOString());
+    const todayCheckIn = get().checkInRecords.find(c => c.date === todayStr);
+    return todayCheckIn?.checkedIn ?? false;
+  },
+
+  getStreakDays: () => {
+    const { checkInRecords } = get();
+    if (checkInRecords.length === 0) return 0;
+
+    const sortedDates = checkInRecords
+      .filter(c => c.checkedIn)
+      .map(c => c.date)
+      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+
+    if (sortedDates.length === 0) return 0;
+
+    let streak = 0;
+    let currentDate = new Date();
+    currentDate.setHours(0, 0, 0, 0);
+
+    const todayStr = formatDate(new Date().toISOString());
+    const hasToday = sortedDates.includes(todayStr);
+
+    if (!hasToday) {
+      currentDate = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
+    }
+
+    while (true) {
+      const dateStr = formatDate(currentDate.toISOString());
+      if (sortedDates.includes(dateStr)) {
+        streak++;
+        currentDate = new Date(currentDate.getTime() - 24 * 60 * 60 * 1000);
+      } else {
+        break;
+      }
+    }
+
+    return streak;
+  },
+
+  getCheckInReward: (): CheckInReward => {
+    const streak = get().getStreakDays();
+    if (streak >= 30) return '30days';
+    if (streak >= 14) return '14days';
+    if (streak >= 7) return '7days';
+    if (streak >= 3) return '3days';
+    return 'none';
   },
 }));
