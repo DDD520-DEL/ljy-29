@@ -12,7 +12,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { Trophy, Clock, TrendingUp, AlertTriangle, Tag, Folder, Award, Lightbulb, BarChart3, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, Clock, TrendingUp, AlertTriangle, Tag, Folder, Award, Lightbulb, BarChart3, Sparkles, ChevronDown, ChevronUp, GitCompare } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
 import { TIME_PERIOD_LABELS, TimePeriod, TAG_OPTIONS, GroupStats, GRADE_LABELS, GRADE_COLORS } from '@/types';
 import { formatDate, getDaysAgoDate } from '@/utils/timeUtils';
@@ -20,11 +20,13 @@ import IntersectionRankingShare from '@/components/IntersectionRankingShare';
 import type { RankItem } from '@/utils/shareUtils';
 import { calculateAllTimingScores } from '@/utils/timingScore';
 import { calculateMovingAveragePredictions, IntersectionPrediction } from '@/utils/predictionUtils';
+import { useNavigate } from 'react-router-dom';
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 export default function AnalysisPage() {
   const { records, intersections, groups } = useDataStore();
+  const navigate = useNavigate();
   const [timeRange, setTimeRange] = useState<'7' | '30'>('30');
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
@@ -311,9 +313,19 @@ export default function AnalysisPage() {
   return (
     <div className="min-h-screen pb-24">
       <div className="max-w-lg mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white mb-1">数据分析</h1>
-          <p className="text-slate-400 text-sm">看看哪些路口最让人抓狂</p>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-white mb-1">数据分析</h1>
+            <p className="text-slate-400 text-sm">看看哪些路口最让人抓狂</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/comparison')}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-medium text-sm hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-500/20"
+          >
+            <GitCompare className="w-4 h-4" />
+            对比分析
+          </button>
         </div>
 
         <div className="flex gap-2 mb-4">

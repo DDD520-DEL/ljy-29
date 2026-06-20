@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import TimerPage from "@/pages/TimerPage";
 import RecordsPage from "@/pages/RecordsPage";
 import AnalysisPage from "@/pages/AnalysisPage";
+import ComparisonPage from "@/pages/ComparisonPage";
 import IntersectionsPage from "@/pages/IntersectionsPage";
 import ProfilePage from "@/pages/ProfilePage";
 import { BottomNavigation } from "@/components/BottomNavigation";
@@ -24,6 +25,7 @@ function AppContent() {
         <Route path="/" element={<TimerPage />} />
         <Route path="/records" element={<RecordsPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
+        <Route path="/comparison" element={<ComparisonPage />} />
         <Route path="/intersections" element={<IntersectionsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
       </Routes>

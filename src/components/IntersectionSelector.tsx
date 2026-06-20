@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Plus, MapPin, Folder, X } from 'lucide-react';
+import { ChevronDown, Search, Plus, MapPin, Folder, X, GitCompare } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -134,30 +134,47 @@ export function IntersectionSelector({ disabled = false }: IntersectionSelectorP
               filteredIntersections.map((intersection) => {
                 const intersectionGroups = groups.filter(g => g.intersectionIds.includes(intersection.id));
                 return (
-                  <button
+                  <div
                     key={intersection.id}
-                    type="button"
-                    onClick={() => handleSelect(intersection.id)}
-                    className={`w-full px-4 py-3 text-left hover:bg-slate-700/50 transition-colors ${
+                    className={`group flex items-center hover:bg-slate-700/50 transition-colors ${
                       intersection.id === selectedIntersectionId ? 'bg-slate-700' : ''
                     }`}
                   >
-                    <div className="font-medium text-white">{intersection.name}</div>
-                    <div className="text-xs text-slate-400">{intersection.area}</div>
-                    {intersectionGroups.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {intersectionGroups.slice(0, 3).map((group) => (
-                          <span
-                            key={group.id}
-                            className="px-1.5 py-0.5 rounded text-xs font-medium"
-                            style={{ backgroundColor: group.color + '25', color: group.color }}
-                          >
-                            {group.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelect(intersection.id)}
+                      className="flex-1 px-4 py-3 text-left min-w-0"
+                    >
+                      <div className="font-medium text-white truncate">{intersection.name}</div>
+                      <div className="text-xs text-slate-400 truncate">{intersection.area}</div>
+                      {intersectionGroups.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {intersectionGroups.slice(0, 3).map((group) => (
+                            <span
+                              key={group.id}
+                              className="px-1.5 py-0.5 rounded text-xs font-medium"
+                              style={{ backgroundColor: group.color + '25', color: group.color }}
+                            >
+                              {group.name}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsOpen(false);
+                        navigate(`/comparison?ids=${intersection.id}`);
+                      }}
+                      className="px-3 py-3 mr-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors flex items-center gap-1"
+                      title="对比该路口"
+                    >
+                      <GitCompare className="w-4 h-4" />
+                      <span className="text-xs">对比</span>
+                    </button>
+                  </div>
                 );
               })
             ) : (
