@@ -1,4 +1,4 @@
-import { Play, Square, RotateCcw, AlertCircle } from 'lucide-react';
+import { Play, Square, RotateCcw, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { TrafficLight } from '@/components/TrafficLight';
 import { TimerDisplay } from '@/components/TimerDisplay';
 import { IntersectionSelector } from '@/components/IntersectionSelector';
@@ -6,7 +6,7 @@ import { DirectionSelector } from '@/components/DirectionSelector';
 import { useDataStore } from '@/store/useDataStore';
 
 export default function TimerPage() {
-  const { timerStatus, elapsedSeconds, selectedIntersectionId, selectedDirection, startTimer, stopTimer, resetTimer } = useDataStore();
+  const { timerStatus, elapsedSeconds, selectedIntersectionId, selectedDirection, lastSaveResult, startTimer, stopTimer, resetTimer } = useDataStore();
 
   const canStart = selectedIntersectionId && selectedDirection && timerStatus !== 'running';
   const isDisabled = timerStatus === 'running';
@@ -98,11 +98,26 @@ export default function TimerPage() {
           </div>
         </div>
 
-        {timerStatus === 'stopped' && (
+        {timerStatus === 'stopped' && lastSaveResult === 'success' && (
           <div className="mt-8 p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-            <div className="text-green-400 font-medium mb-1">记录已保存！</div>
+            <div className="flex items-center gap-2 text-green-400 font-medium mb-1">
+              <CheckCircle className="w-5 h-5" />
+              记录已保存！
+            </div>
             <div className="text-sm text-slate-400">
               本次等待 {Math.round(elapsedSeconds)} 秒，可在"记录"页面查看详情
+            </div>
+          </div>
+        )}
+
+        {timerStatus === 'stopped' && lastSaveResult === 'too_short' && (
+          <div className="mt-8 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+            <div className="flex items-center gap-2 text-amber-400 font-medium mb-1">
+              <Clock className="w-5 h-5" />
+              等待时间太短未记录
+            </div>
+            <div className="text-sm text-slate-400">
+              至少等待 1 秒以上才会保存记录，请重新开始计时
             </div>
           </div>
         )}

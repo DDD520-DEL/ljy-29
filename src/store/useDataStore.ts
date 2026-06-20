@@ -3,6 +3,8 @@ import { Intersection, WaitRecord, Direction, TimerStatus, TimePeriod } from '@/
 import { generateId, getTimePeriodFromDate } from '@/utils/timeUtils';
 import { mockIntersections, mockRecords } from '@/data/mockData';
 
+export type SaveResult = 'success' | 'too_short' | null;
+
 interface DataState {
   intersections: Intersection[];
   records: WaitRecord[];
@@ -12,6 +14,7 @@ interface DataState {
   selectedDirection: Direction | null;
   startTime: string | null;
   timerIntervalId: number | null;
+  lastSaveResult: SaveResult;
 
   initData: () => void;
   setSelectedIntersection: (id: string | null) => void;
@@ -60,6 +63,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   selectedDirection: null,
   startTime: null,
   timerIntervalId: null,
+  lastSaveResult: null,
 
   initData: () => {
     const storedIntersections = loadFromStorage<Intersection[]>(STORAGE_KEY_INTERSECTIONS, []);
@@ -101,6 +105,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       startTime,
       elapsedSeconds: 0,
       timerIntervalId: intervalId,
+      lastSaveResult: null,
     });
   },
 
@@ -110,6 +115,8 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (timerIntervalId) {
       clearInterval(timerIntervalId);
     }
+
+    let saveResult: SaveResult = 'too_short';
 
     if (selectedIntersectionId && selectedDirection && startTime && elapsedSeconds > 0) {
       const intersection = intersections.find(i => i.id === selectedIntersectionId);
@@ -130,11 +137,13 @@ export const useDataStore = create<DataState>((set, get) => ({
       const records = [newRecord, ...get().records];
       set({ records });
       saveToStorage(STORAGE_KEY_RECORDS, records);
+      saveResult = 'success';
     }
 
     set({
       timerStatus: 'stopped',
       timerIntervalId: null,
+      lastSaveResult: saveResult,
     });
   },
 
@@ -148,6 +157,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       elapsedSeconds: 0,
       startTime: null,
       timerIntervalId: null,
+      lastSaveResult: null,
     });
   },
 
