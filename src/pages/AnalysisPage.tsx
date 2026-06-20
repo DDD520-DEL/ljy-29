@@ -9,14 +9,14 @@ import {
   ResponsiveContainer,
   LineChart,
   Line,
-  PieChart,
-  Pie,
   Cell,
 } from 'recharts';
 import { Trophy, Clock, TrendingUp, AlertTriangle, Tag, Folder } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
 import { TIME_PERIOD_LABELS, TimePeriod, TAG_OPTIONS, TAG_LABELS, Tag as TagType, GroupStats } from '@/types';
 import { formatDate, getDaysAgoDate, isSameDay } from '@/utils/timeUtils';
+import IntersectionRankingShare from '@/components/IntersectionRankingShare';
+import type { RankItem } from '@/utils/shareUtils';
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
@@ -183,6 +183,42 @@ export default function AnalysisPage() {
   const overallAvg = filteredRecords.length > 0
     ? Math.round(filteredRecords.reduce((sum, r) => sum + r.duration, 0) / filteredRecords.length)
     : 0;
+
+  const computeRankingItems = (days: number, allRecords: typeof records): RankItem[] => {
+    const cutoffDate = getDaysAgoDate(days);
+    const periodRecords = allRecords.filter(r => new Date(r.startTime) >= cutoffDate);
+    const statsMap = new Map<string, { name: string; total: number; count: number }>();
+
+    periodRecords.forEach((record) => {
+      const existing = statsMap.get(record.intersectionId);
+      if (existing) {
+        existing.total += record.duration;
+        existing.count += 1;
+      } else {
+        statsMap.set(record.intersectionId, {
+          name: record.intersectionName,
+          total: record.duration,
+          count: 1,
+        });
+      }
+    });
+
+    return Array.from(statsMap.entries())
+      .map(([, data]) => ({
+        name: data.name,
+        avgDuration: Math.round(data.total / data.count),
+        recordCount: data.count,
+      }))
+      .sort((a, b) => b.avgDuration - a.avgDuration)
+      .slice(0, 5)
+      .map((item, index) => ({
+        ...item,
+        rank: index + 1,
+      }));
+  };
+
+  const weekRankingItems = useMemo(() => computeRankingItems(7, records), [records]);
+  const monthRankingItems = useMemo(() => computeRankingItems(30, records), [records]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -565,39 +601,10 @@ export default function AnalysisPage() {
           </div>
         </div>
 
-        <div>
-          <h2 className="text-lg font-semibold text-white mb-4">路口排行榜</h2>
-          <div className="space-y-2">
-            {intersectionStats.slice(0, 5).map((item, index) => (
-              <div
-                key={item.id}
-                className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4"
-              >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                    index === 0
-                      ? 'bg-yellow-500 text-yellow-900'
-                      : index === 1
-                      ? 'bg-slate-400 text-slate-800'
-                      : index === 2
-                      ? 'bg-amber-700 text-amber-100'
-                      : 'bg-slate-700 text-slate-400'
-                  }`}
-                >
-                  {index + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-white truncate">{item.name}</div>
-                  <div className="text-xs text-slate-400">{item.count} 次记录</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-lg font-bold text-amber-400">{item.avg}s</div>
-                  <div className="text-xs text-slate-500">平均</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <IntersectionRankingShare
+          weekItems={weekRankingItems}
+          monthItems={monthRankingItems}
+        />
       </div>
     </div>
   );
