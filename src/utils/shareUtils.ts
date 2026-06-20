@@ -22,15 +22,24 @@ const RANK_COLORS = [
 ];
 
 export async function generateShareImage(data: ShareImageData): Promise<Blob> {
+  if (typeof document === 'undefined') {
+    throw new Error('当前环境不支持 Canvas，请在浏览器中使用');
+  }
+
   const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('浏览器不支持 Canvas 2D 上下文，无法生成分享图片');
+  }
 
   const width = 750;
   const padding = 40;
   const headerHeight = 160;
   const itemHeight = 110;
   const footerHeight = 100;
-  const height = headerHeight + data.items.length * itemHeight + footerHeight + padding * 2;
+  const minItems = Math.max(data.items.length, 1);
+  const height = headerHeight + minItems * itemHeight + footerHeight + padding * 2;
 
   canvas.width = width;
   canvas.height = height;
@@ -70,57 +79,68 @@ export async function generateShareImage(data: ShareImageData): Promise<Blob> {
 
   let y = padding + headerHeight;
 
-  data.items.forEach((item, index) => {
-    const colors = RANK_COLORS[index] || RANK_COLORS[RANK_COLORS.length - 1];
+  if (data.items.length > 0) {
+    data.items.forEach((item, index) => {
+      const colors = RANK_COLORS[index] || RANK_COLORS[RANK_COLORS.length - 1];
 
-    ctx.fillStyle = 'rgba(51, 65, 85, 0.6)';
-    ctx.beginPath();
-    ctx.roundRect(padding, y, width - padding * 2, itemHeight - 16, 16);
-    ctx.fill();
+      ctx.fillStyle = 'rgba(51, 65, 85, 0.6)';
+      ctx.beginPath();
+      ctx.roundRect(padding, y, width - padding * 2, itemHeight - 16, 16);
+      ctx.fill();
 
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.1)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.1)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
 
-    ctx.fillStyle = colors.bg;
-    ctx.beginPath();
-    ctx.arc(padding + 50, y + (itemHeight - 16) / 2, 32, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = colors.bg;
+      ctx.beginPath();
+      ctx.arc(padding + 50, y + (itemHeight - 16) / 2, 32, 0, Math.PI * 2);
+      ctx.fill();
 
-    ctx.fillStyle = colors.text;
-    ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+      ctx.fillStyle = colors.text;
+      ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(item.rank), padding + 50, y + (itemHeight - 16) / 2 + 1);
+      ctx.textAlign = 'start';
+      ctx.textBaseline = 'top';
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
+      ctx.textBaseline = 'top';
+
+      const maxNameWidth = width - padding * 2 - 180;
+      const displayName = truncateText(ctx, item.name, maxNameWidth);
+      ctx.fillText(displayName, padding + 100, y + 24);
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '20px system-ui, -apple-system, sans-serif';
+      ctx.fillText(`${item.recordCount} 次记录`, padding + 100, y + 60);
+
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${item.avgDuration}s`, width - padding, y + 32);
+      ctx.textAlign = 'start';
+
+      ctx.fillStyle = '#64748b';
+      ctx.font = '18px system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.fillText('平均等待', width - padding, y + 68);
+      ctx.textAlign = 'start';
+
+      y += itemHeight;
+    });
+  } else {
+    const emptyY = padding + headerHeight + itemHeight * 0.5;
+    ctx.fillStyle = '#475569';
+    ctx.font = '24px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(String(item.rank), padding + 50, y + (itemHeight - 16) / 2 + 1);
+    ctx.fillText('暂无排行数据', width / 2, emptyY);
     ctx.textAlign = 'start';
     ctx.textBaseline = 'top';
-
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
-    ctx.textBaseline = 'top';
-
-    const maxNameWidth = width - padding * 2 - 180;
-    const displayName = truncateText(ctx, item.name, maxNameWidth);
-    ctx.fillText(displayName, padding + 100, y + 24);
-
-    ctx.fillStyle = '#64748b';
-    ctx.font = '20px system-ui, -apple-system, sans-serif';
-    ctx.fillText(`${item.recordCount} 次记录`, padding + 100, y + 60);
-
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText(`${item.avgDuration}s`, width - padding, y + 32);
-    ctx.textAlign = 'start';
-
-    ctx.fillStyle = '#64748b';
-    ctx.font = '18px system-ui, -apple-system, sans-serif';
-    ctx.textAlign = 'right';
-    ctx.fillText('平均等待', width - padding, y + 68);
-    ctx.textAlign = 'start';
-
-    y += itemHeight;
-  });
+  }
 
   const footerY = height - padding - footerHeight;
 
