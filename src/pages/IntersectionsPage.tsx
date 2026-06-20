@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { Plus, Edit2, Trash2, MapPin, X, Save, FolderPlus, Check, Folder, Clock } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Plus, Edit2, Trash2, MapPin, X, Save, FolderPlus, Check, Folder, Clock, Award, ChevronDown, ChevronUp, Lightbulb, BarChart3 } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
-import { Intersection, IntersectionGroup, GROUP_COLORS } from '@/types';
+import { Intersection, IntersectionGroup, GROUP_COLORS, GRADE_LABELS, GRADE_COLORS, TimingScore } from '@/types';
+import { calculateAllTimingScores } from '@/utils/timingScore';
 
 type TabType = 'intersections' | 'groups';
 
@@ -10,6 +11,7 @@ export default function IntersectionsPage() {
     addGroup, updateGroup, deleteGroup, toggleIntersectionInGroup } = useDataStore();
 
   const [activeTab, setActiveTab] = useState<TabType>('intersections');
+  const [expandedIntersectionId, setExpandedIntersectionId] = useState<string | null>(null);
 
   const [showIntersectionForm, setShowIntersectionForm] = useState(false);
   const [editingIntersectionId, setEditingIntersectionId] = useState<string | null>(null);
@@ -27,6 +29,14 @@ export default function IntersectionsPage() {
 
   const getIntersectionGroups = (intersectionId: string) => {
     return groups.filter(g => g.intersectionIds.includes(intersectionId));
+  };
+
+  const timingScores = useMemo(() => {
+    return calculateAllTimingScores(intersections, records);
+  }, [intersections, records]);
+
+  const toggleExpand = (intersectionId: string) => {
+    setExpandedIntersectionId(expandedIntersectionId === intersectionId ? null : intersectionId);
   };
 
   const handleAddIntersection = () => {
@@ -279,61 +289,176 @@ export default function IntersectionsPage() {
               {intersections.length > 0 ? (
               intersections.map((intersection) => {
                 const intersectionGroups = getIntersectionGroups(intersection.id);
+                const score = timingScores.get(intersection.id);
+                const isExpanded = expandedIntersectionId === intersection.id;
                 return (
                   <div
                     key={intersection.id}
-                    className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 hover:border-slate-600 transition-all"
+                    className="bg-slate-800/50 rounded-xl border border-slate-700/50 hover:border-slate-600 transition-all overflow-hidden"
                   >
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
-                        <MapPin className="w-5 h-5 text-amber-400" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-medium text-white">{intersection.name}</div>
-                        <div className="text-sm text-slate-400">{intersection.area}</div>
-                        {intersection.note && (
-                          <div className="text-xs text-slate-500 mt-1">{intersection.note}</div>
-                        )}
-                        {intersection.reasonableWaitTime !== undefined && intersection.reasonableWaitTime > 0 && (
-                          <div className="text-xs text-amber-400 mt-2 flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            合理等待 {intersection.reasonableWaitTime} 秒
+                    <div className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                          <MapPin className="w-5 h-5 text-amber-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-white">{intersection.name}</div>
+                          <div className="text-sm text-slate-400">{intersection.area}</div>
+                          {intersection.note && (
+                            <div className="text-xs text-slate-500 mt-1">{intersection.note}</div>
+                          )}
+                          {intersection.reasonableWaitTime !== undefined && intersection.reasonableWaitTime > 0 && (
+                            <div className="text-xs text-amber-400 mt-2 flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              合理等待 {intersection.reasonableWaitTime} 秒
+                            </div>
+                          )}
+                          {intersectionGroups.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {intersectionGroups.map((group) => (
+                                <span
+                                  key={group.id}
+                                  className="px-2 py-0.5 rounded-full text-xs font-medium"
+                                  style={{ backgroundColor: group.color + '25', color: group.color }}
+                                >
+                                  {group.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="text-xs text-slate-500">
+                              {getRecordCount(intersection.id)} 条记录
+                            </span>
+                            {score && (
+                              <div className="flex items-center gap-1.5">
+                                <Award className="w-3.5 h-3.5" style={{ color: GRADE_COLORS[score.grade] }} />
+                                <span
+                                  className="text-xs font-medium"
+                                  style={{ color: GRADE_COLORS[score.grade] }}
+                                >
+                                  配时评分 {score.totalScore} · {GRADE_LABELS[score.grade]}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {intersectionGroups.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {intersectionGroups.map((group) => (
-                              <span
-                                key={group.id}
-                                className="px-2 py-0.5 rounded-full text-xs font-medium"
-                                style={{ backgroundColor: group.color + '25', color: group.color }}
-                              >
-                                {group.name}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                        <div className="text-xs text-slate-500 mt-2">
-                          {getRecordCount(intersection.id)} 条记录
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {score && (
+                            <button
+                              type="button"
+                              onClick={() => toggleExpand(intersection.id)}
+                              className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
+                            >
+                              {isExpanded ? (
+                                <ChevronUp className="w-4 h-4" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4" />
+                              )}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleEditIntersection(intersection)}
+                            className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteIntersection(intersection.id)}
+                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => handleEditIntersection(intersection)}
-                          className="p-2 text-slate-400 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteIntersection(intersection.id)}
-                          className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
                     </div>
+
+                    {score && isExpanded && (
+                      <div className="border-t border-slate-700/50 px-4 py-4 bg-slate-900/30">
+                        <div className="mb-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <BarChart3 className="w-4 h-4 text-slate-400" />
+                            <span className="text-sm font-medium text-white">评分详情</span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-slate-800/50 rounded-lg p-3">
+                              <div className="text-xs text-slate-400 mb-1">平均时长</div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-lg font-bold text-white">{score.dimensions.avgDurationScore}</span>
+                                <span className="text-xs text-slate-500">{score.details.avgDuration}s</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-slate-700 rounded-full mt-1 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{ width: `${score.dimensions.avgDurationScore}%`, backgroundColor: '#3b82f6' }}
+                                />
+                              </div>
+                            </div>
+                            <div className="bg-slate-800/50 rounded-lg p-3">
+                              <div className="text-xs text-slate-400 mb-1">峰谷差异</div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-lg font-bold text-white">{score.dimensions.peakValleyScore}</span>
+                                <span className="text-xs text-slate-500">峰{score.details.peakAvg}s</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-slate-700 rounded-full mt-1 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{ width: `${score.dimensions.peakValleyScore}%`, backgroundColor: '#8b5cf6' }}
+                                />
+                              </div>
+                            </div>
+                            <div className="bg-slate-800/50 rounded-lg p-3">
+                              <div className="text-xs text-slate-400 mb-1">稳定性</div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-lg font-bold text-white">{score.dimensions.varianceScore}</span>
+                                <span className="text-xs text-slate-500">方差{score.details.variance}</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-slate-700 rounded-full mt-1 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{ width: `${score.dimensions.varianceScore}%`, backgroundColor: '#10b981' }}
+                                />
+                              </div>
+                            </div>
+                            <div className="bg-slate-800/50 rounded-lg p-3">
+                              <div className="text-xs text-slate-400 mb-1">超限率</div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-lg font-bold text-white">{score.dimensions.overLimitScore}</span>
+                                <span className="text-xs text-slate-500">{score.details.overLimitRate}%</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-slate-700 rounded-full mt-1 overflow-hidden">
+                                <div
+                                  className="h-full rounded-full transition-all"
+                                  style={{ width: `${score.dimensions.overLimitScore}%`, backgroundColor: '#f59e0b' }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Lightbulb className="w-4 h-4 text-amber-400" />
+                            <span className="text-sm font-medium text-white">优化建议</span>
+                          </div>
+                          <div className="space-y-2">
+                            {score.suggestions.map((suggestion, index) => (
+                              <div
+                                key={index}
+                                className="flex items-start gap-2 text-sm text-slate-300 bg-amber-500/5 border border-amber-500/20 rounded-lg p-3"
+                              >
+                                <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
+                                  {index + 1}
+                                </span>
+                                <span>{suggestion}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })

@@ -96,3 +96,42 @@ export const TAG_OPTIONS: { value: Tag; label: string }[] = [
   { value: 'shopping', label: '购物出行' },
   { value: 'leisure', label: '休闲散步' },
 ];
+
+export interface TimingScore {
+  intersectionId: string;
+  intersectionName: string;
+  totalScore: number;
+  grade: 'excellent' | 'good' | 'average' | 'poor' | 'very_poor';
+  dimensions: {
+    avgDurationScore: number;
+    peakValleyScore: number;
+    varianceScore: number;
+    overLimitScore: number;
+  };
+  details: {
+    avgDuration: number;
+    reasonableTime: number;
+    peakAvg: number;
+    flatAvg: number;
+    variance: number;
+    overLimitRate: number;
+    recordCount: number;
+  };
+  suggestions: string[];
+}
+
+export const GRADE_LABELS: Record<TimingScore['grade'], string> = {
+  excellent: '优秀',
+  good: '良好',
+  average: '一般',
+  poor: '较差',
+  very_poor: '很差',
+};
+
+export const GRADE_COLORS: Record<TimingScore['grade'], string> = {
+  excellent: '#10b981',
+  good: '#3b82f6',
+  average: '#f59e0b',
+  poor: '#f97316',
+  very_poor: '#ef4444',
+};
