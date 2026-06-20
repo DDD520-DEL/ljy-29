@@ -262,14 +262,29 @@ export default function AnalysisPage() {
     return predictions.find(p => p.intersectionId === selectedPredictionIntersection) || null;
   }, [predictions, selectedPredictionIntersection]);
 
+  const hasAnyPredictionData = useMemo(() => {
+    if (!selectedPrediction) return false;
+    return selectedPrediction.dailyPredictions.some(day =>
+      day.periods.some(p => p.hasEnoughData)
+    );
+  }, [selectedPrediction]);
+
   const predictionChartData = useMemo(() => {
     if (!selectedPrediction) return [];
     return selectedPrediction.dailyPredictions.map(day => ({
       date: day.dayLabel,
-      早高峰: day.periods.find(p => p.period === 'morning_peak')?.predictedDuration || 0,
-      平峰: day.periods.find(p => p.period === 'flat')?.predictedDuration || 0,
-      晚高峰: day.periods.find(p => p.period === 'evening_peak')?.predictedDuration || 0,
-      夜间: day.periods.find(p => p.period === 'night')?.predictedDuration || 0,
+      早高峰: day.periods.find(p => p.period === 'morning_peak')?.hasEnoughData
+        ? day.periods.find(p => p.period === 'morning_peak')?.predictedDuration || 0
+        : null,
+      平峰: day.periods.find(p => p.period === 'flat')?.hasEnoughData
+        ? day.periods.find(p => p.period === 'flat')?.predictedDuration || 0
+        : null,
+      晚高峰: day.periods.find(p => p.period === 'evening_peak')?.hasEnoughData
+        ? day.periods.find(p => p.period === 'evening_peak')?.predictedDuration || 0
+        : null,
+      夜间: day.periods.find(p => p.period === 'night')?.hasEnoughData
+        ? day.periods.find(p => p.period === 'night')?.predictedDuration || 0
+        : null,
     }));
   }, [selectedPrediction]);
 
@@ -965,61 +980,75 @@ export default function AnalysisPage() {
                   <h3 className="text-white font-medium mb-4">
                     {selectedPrediction.intersectionName} - 各时段预测等待时长
                   </h3>
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={predictionChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                        <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} />
-                        <YAxis stroke="#94a3b8" fontSize={12} />
-                        <Tooltip
-                          content={({ active, payload, label }: any) => {
-                            if (active && payload && payload.length) {
-                              return (
-                                <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-xl">
-                                  <p className="text-white font-medium mb-2">{label}</p>
-                                  {payload.map((entry: any, index: number) => (
-                                    <p key={index} className="text-sm" style={{ color: entry.color }}>
-                                      {entry.name}: {entry.value}秒
-                                    </p>
-                                  ))}
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Legend wrapperStyle={{ fontSize: '12px' }} />
-                        <Bar dataKey="早高峰" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="平峰" fill="#10b981" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="晚高峰" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="夜间" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2">
-                    {selectedPrediction.dailyPredictions.map((day) => (
-                      <div
-                        key={day.date}
-                        className="bg-slate-900/50 rounded-lg p-3 border border-slate-700/30"
-                      >
-                        <div className="text-sm font-medium text-white mb-2">{day.dayLabel}</div>
-                        <div className="space-y-1">
-                          {day.periods.map((period) => (
-                            <div
-                              key={period.period}
-                              className="flex items-center justify-between text-xs"
-                            >
-                              <span className="text-slate-400">{period.periodLabel}</span>
-                              <span className="text-purple-400 font-medium">
-                                {period.predictedDuration}s
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                  {hasAnyPredictionData ? (
+                    <>
+                      <div className="h-72">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={predictionChartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                            <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} />
+                            <YAxis stroke="#94a3b8" fontSize={12} />
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                  return (
+                                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-3 shadow-xl">
+                                      <p className="text-white font-medium mb-2">{label as string}</p>
+                                      {payload.map((entry, index: number) => (
+                                        <p key={index} className="text-sm" style={{ color: entry.color as string }}>
+                                          {entry.name}: {entry.value !== null ? `${entry.value as number}秒` : '暂无数据'}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: '12px' }} />
+                            <Bar dataKey="早高峰" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="平峰" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="晚高峰" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="夜间" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
-                    ))}
-                  </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        {selectedPrediction.dailyPredictions.map((day) => (
+                          <div
+                            key={day.date}
+                            className="bg-slate-900/50 rounded-lg p-3 border border-slate-700/30"
+                          >
+                            <div className="text-sm font-medium text-white mb-2">{day.dayLabel}</div>
+                            <div className="space-y-1">
+                              {day.periods.map((period) => (
+                                <div
+                                  key={period.period}
+                                  className="flex items-center justify-between text-xs"
+                                >
+                                  <span className="text-slate-400">{period.periodLabel}</span>
+                                  {period.hasEnoughData ? (
+                                    <span className="text-purple-400 font-medium">
+                                      {period.predictedDuration}s
+                                    </span>
+                                  ) : (
+                                    <span className="text-slate-600">暂无</span>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="h-64 flex flex-col items-center justify-center text-slate-500">
+                      <Sparkles className="w-12 h-12 mb-3 opacity-30" />
+                      <p className="text-sm">暂无足够的历史数据进行预测</p>
+                      <p className="text-xs text-slate-600 mt-1">请先记录至少1次等待时长</p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
@@ -1027,15 +1056,17 @@ export default function AnalysisPage() {
                   <div className="space-y-2">
                     {predictions.map((prediction) => {
                       const todayPred = prediction.dailyPredictions[0];
-                      const avgPred = todayPred
+                      const validPeriods = todayPred?.periods.filter(p => p.hasEnoughData) || [];
+                      const hasData = validPeriods.length > 0;
+                      const avgPred = hasData
                         ? Math.round(
-                            todayPred.periods.reduce((sum, p) => sum + p.predictedDuration, 0) /
-                              todayPred.periods.length
+                            validPeriods.reduce((sum, p) => sum + p.predictedDuration, 0) /
+                              validPeriods.length
                           )
                         : 0;
-                      const peakPeriod = todayPred?.periods.reduce((max, p) =>
+                      const peakPeriod = hasData ? validPeriods.reduce((max, p) =>
                         p.predictedDuration > max.predictedDuration ? p : max
-                      );
+                      ) : null;
 
                       return (
                         <div
@@ -1053,12 +1084,22 @@ export default function AnalysisPage() {
                               {prediction.intersectionName}
                             </div>
                             <div className="text-xs text-slate-400">
-                              峰值时段: {peakPeriod?.periodLabel} ({peakPeriod?.predictedDuration}s)
+                              {hasData ? (
+                                <>峰值时段: {peakPeriod?.periodLabel} ({peakPeriod?.predictedDuration}s)</>
+                              ) : (
+                                <span className="text-slate-500">暂无足够历史数据</span>
+                              )}
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="text-lg font-bold text-purple-400">{avgPred}s</div>
-                            <div className="text-xs text-slate-500">今日平均预测</div>
+                            {hasData ? (
+                              <>
+                                <div className="text-lg font-bold text-purple-400">{avgPred}s</div>
+                                <div className="text-xs text-slate-500">今日平均预测</div>
+                              </>
+                            ) : (
+                              <div className="text-xs text-slate-500">—</div>
+                            )}
                           </div>
                         </div>
                       );

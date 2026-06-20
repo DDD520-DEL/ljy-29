@@ -14,6 +14,11 @@ export default function TimerPage() {
   const currentIntersection = intersections.find(i => i.id === selectedIntersectionId);
   const reasonableWaitTime = currentIntersection?.reasonableWaitTime;
 
+  const intersectionRecords = useMemo(() => {
+    if (!selectedIntersectionId) return [];
+    return records.filter(r => r.intersectionId === selectedIntersectionId);
+  }, [selectedIntersectionId, records]);
+
   const currentPrediction = useMemo(() => {
     if (!selectedIntersectionId || !currentIntersection) return null;
     const prediction = calculateMovingAveragePredictions(
@@ -73,39 +78,69 @@ export default function TimerPage() {
           </div>
         )}
 
-        {selectedIntersectionId && currentPrediction && timerStatus === 'idle' && (
-          <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-xl">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-purple-400" />
-              <span className="text-sm text-purple-400 font-medium">当前时段预测</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm text-slate-300">{currentPrediction.periodLabel}</div>
-                <div className="text-xs text-slate-500">基于近14天历史数据</div>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-bold text-purple-400">
-                  {currentPrediction.predictedDuration}
-                  <span className="text-sm font-normal text-slate-400 ml-1">秒</span>
+        {selectedIntersectionId && timerStatus === 'idle' && (
+          <>
+            {currentPrediction ? (
+              <div className="mb-6 p-4 bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-purple-400" />
+                  <span className="text-sm text-purple-400 font-medium">当前时段预测</span>
                 </div>
-                <div className="text-xs text-slate-500">预估等待时长</div>
-              </div>
-            </div>
-            {reasonableWaitTime !== undefined && reasonableWaitTime > 0 && (
-              <div className="mt-2 pt-2 border-t border-purple-500/20">
-                {currentPrediction.predictedDuration > reasonableWaitTime ? (
-                  <span className="text-xs text-orange-400">
-                    ⚠️ 预测值超过合理时长，建议错峰出行
-                  </span>
-                ) : (
-                  <span className="text-xs text-green-400">
-                    ✓ 预测值在合理范围内
-                  </span>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-slate-300">{currentPrediction.periodLabel}</div>
+                    <div className="text-xs text-slate-500">基于近14天历史数据</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-purple-400">
+                      {currentPrediction.predictedDuration}
+                      <span className="text-sm font-normal text-slate-400 ml-1">秒</span>
+                    </div>
+                    <div className="text-xs text-slate-500">预估等待时长</div>
+                  </div>
+                </div>
+                {reasonableWaitTime !== undefined && reasonableWaitTime > 0 && (
+                  <div className="mt-2 pt-2 border-t border-purple-500/20">
+                    {currentPrediction.predictedDuration > reasonableWaitTime ? (
+                      <span className="text-xs text-orange-400">
+                        ⚠️ 预测值超过合理时长，建议错峰出行
+                      </span>
+                    ) : (
+                      <span className="text-xs text-green-400">
+                        ✓ 预测值在合理范围内
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
+            ) : intersectionRecords.length === 0 ? (
+              <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-slate-500" />
+                  <span className="text-sm text-slate-400 font-medium">当前时段预测</span>
+                </div>
+                <div className="text-sm text-slate-500">
+                  暂无该路口的历史记录，无法提供预测
+                </div>
+                <div className="text-xs text-slate-600 mt-1">
+                  记录几次等待时长后，系统将智能预测各时段等待时间
+                </div>
+              </div>
+            ) : (
+              <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700/50 rounded-xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-slate-500" />
+                  <span className="text-sm text-slate-400 font-medium">当前时段预测</span>
+                </div>
+                <div className="text-sm text-slate-500">
+                  当前时段暂无足够的历史数据进行准确预测
+                </div>
+                <div className="text-xs text-slate-600 mt-1">
+                  已有 {intersectionRecords.length} 条记录，继续记录更多数据以获得更准确的预测
+                </div>
+              </div>
             )}
-          </div>
+          </>
         )}
 
         <div className="flex justify-center gap-4 mb-8">

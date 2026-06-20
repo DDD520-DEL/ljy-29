@@ -13,6 +13,7 @@ export interface PeriodPrediction {
   periodLabel: string;
   predictedDuration: number;
   dataPoints: number;
+  hasEnoughData: boolean;
 }
 
 export interface IntersectionPrediction {
@@ -72,14 +73,10 @@ export function calculateMovingAveragePredictions(
     overallPeriodMap.get(record.timePeriod)!.push(record.duration);
   });
 
-  const overallAvg = recentRecords.length > 0
-    ? recentRecords.reduce((sum, r) => sum + r.duration, 0) / recentRecords.length
-    : 60;
-
   const next7Days = getNext7Days();
   const periods: TimePeriod[] = ['morning_peak', 'flat', 'evening_peak', 'night'];
 
-  const dailyPredictions: DayPrediction[] = next7Days.map(date => {
+  const dailyPredictions: DayPrediction[] = next7Days.map((date, index) => {
     const dayOfWeek = date.getDay();
     const dateStr = formatDate(date.toISOString());
 
@@ -90,20 +87,24 @@ export function calculateMovingAveragePredictions(
 
       let predictedDuration: number;
       let dataPoints: number;
+      let hasEnoughData: boolean;
 
       if (dayPeriodDurations.length >= 2) {
         predictedDuration = Math.round(
           dayPeriodDurations.reduce((a, b) => a + b, 0) / dayPeriodDurations.length
         );
         dataPoints = dayPeriodDurations.length;
+        hasEnoughData = true;
       } else if (overallPeriodDurations.length > 0) {
         predictedDuration = Math.round(
           overallPeriodDurations.reduce((a, b) => a + b, 0) / overallPeriodDurations.length
         );
         dataPoints = overallPeriodDurations.length;
+        hasEnoughData = true;
       } else {
-        predictedDuration = Math.round(overallAvg);
+        predictedDuration = 0;
         dataPoints = 0;
+        hasEnoughData = false;
       }
 
       return {
@@ -111,20 +112,19 @@ export function calculateMovingAveragePredictions(
         periodLabel: TIME_PERIOD_LABELS[period],
         predictedDuration,
         dataPoints,
+        hasEnoughData,
       };
     });
+
+    const dayLabel = index === 0 ? '今天' : DAY_LABELS[dayOfWeek];
 
     return {
       date: dateStr,
       dayOfWeek,
-      dayLabel: dayOfWeek === 0 ? '今天' : DAY_LABELS[dayOfWeek],
+      dayLabel,
       periods: periodPredictions,
     };
   });
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  dailyPredictions[0].dayLabel = '今天';
 
   return {
     intersectionId,
@@ -164,5 +164,11 @@ export function getCurrentPeriodPrediction(
 
   if (!todayPrediction) return null;
 
-  return todayPrediction.periods.find(p => p.period === currentPeriod) || null;
+  const periodPrediction = todayPrediction.periods.find(p => p.period === currentPeriod);
+
+  if (!periodPrediction || !periodPrediction.hasEnoughData) {
+    return null;
+  }
+
+  return periodPrediction;
 }
