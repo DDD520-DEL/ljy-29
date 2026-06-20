@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Plus, MapPin } from 'lucide-react';
-import { Intersection } from '@/types';
+import { ChevronDown, Search, Plus, MapPin, Folder, X } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -9,18 +8,27 @@ interface IntersectionSelectorProps {
 }
 
 export function IntersectionSelector({ disabled = false }: IntersectionSelectorProps) {
-  const { intersections, selectedIntersectionId, setSelectedIntersection } = useDataStore();
+  const { intersections, groups, selectedIntersectionId, setSelectedIntersection } = useDataStore();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const selectedIntersection = intersections.find(i => i.id === selectedIntersectionId);
 
-  const filteredIntersections = intersections.filter(i =>
-    i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    i.area.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredIntersections = intersections.filter(i => {
+    const matchesSearch = i.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      i.area.toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (selectedGroupId) {
+      const group = groups.find(g => g.id === selectedGroupId);
+      const matchesGroup = group?.intersectionIds.includes(i.id) || false;
+      return matchesSearch && matchesGroup;
+    }
+
+    return matchesSearch;
+  });
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -37,6 +45,8 @@ export function IntersectionSelector({ disabled = false }: IntersectionSelectorP
     setIsOpen(false);
     setSearchQuery('');
   };
+
+  const selectedGroup = groups.find(g => g.id === selectedGroupId);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -65,7 +75,7 @@ export function IntersectionSelector({ disabled = false }: IntersectionSelectorP
       {isOpen && (
         <div className="absolute z-50 w-full mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
           <div className="p-3 border-b border-slate-700">
-            <div className="relative">
+            <div className="relative mb-3">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"
@@ -76,26 +86,85 @@ export function IntersectionSelector({ disabled = false }: IntersectionSelectorP
                 autoFocus
               />
             </div>
+
+            {groups.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                  <Folder className="w-3.5 h-3.5" />
+                  按分组筛选
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGroupId(null)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                      selectedGroupId === null
+                        ? 'bg-amber-500 text-white'
+                        : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                    }`}
+                  >
+                    全部
+                  </button>
+                  {groups.map((group) => (
+                    <button
+                      key={group.id}
+                      type="button"
+                      onClick={() => setSelectedGroupId(selectedGroupId === group.id ? null : group.id)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                        selectedGroupId === group.id
+                          ? 'text-white'
+                          : 'hover:opacity-80'
+                      }`}
+                      style={{
+                        backgroundColor: selectedGroupId === group.id ? group.color : group.color + '30',
+                        color: selectedGroupId === group.id ? 'white' : group.color,
+                      }}
+                    >
+                      {group.name}
+                      {selectedGroupId === group.id && <X className="w-3 h-3" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="max-h-60 overflow-y-auto">
             {filteredIntersections.length > 0 ? (
-              filteredIntersections.map((intersection) => (
-                <button
-                  key={intersection.id}
-                  type="button"
-                  onClick={() => handleSelect(intersection.id)}
-                  className={`w-full px-4 py-3 text-left hover:bg-slate-700/50 transition-colors ${
-                    intersection.id === selectedIntersectionId ? 'bg-slate-700' : ''
-                  }`}
-                >
-                  <div className="font-medium text-white">{intersection.name}</div>
-                  <div className="text-xs text-slate-400">{intersection.area}</div>
-                </button>
-              ))
+              filteredIntersections.map((intersection) => {
+                const intersectionGroups = groups.filter(g => g.intersectionIds.includes(intersection.id));
+                return (
+                  <button
+                    key={intersection.id}
+                    type="button"
+                    onClick={() => handleSelect(intersection.id)}
+                    className={`w-full px-4 py-3 text-left hover:bg-slate-700/50 transition-colors ${
+                      intersection.id === selectedIntersectionId ? 'bg-slate-700' : ''
+                    }`}
+                  >
+                    <div className="font-medium text-white">{intersection.name}</div>
+                    <div className="text-xs text-slate-400">{intersection.area}</div>
+                    {intersectionGroups.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {intersectionGroups.slice(0, 3).map((group) => (
+                          <span
+                            key={group.id}
+                            className="px-1.5 py-0.5 rounded text-xs font-medium"
+                            style={{ backgroundColor: group.color + '25', color: group.color }}
+                          >
+                            {group.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                );
+              })
             ) : (
               <div className="px-4 py-6 text-center text-slate-400 text-sm">
-                没有找到匹配的路口
+                {selectedGroup
+                  ? `"${selectedGroup.name}" 分组下没有路口`
+                  : '没有找到匹配的路口'}
               </div>
             )}
           </div>

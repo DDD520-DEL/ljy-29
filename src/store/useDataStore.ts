@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Intersection, WaitRecord, Direction, TimerStatus, TimePeriod, Tag } from '@/types';
+import { Intersection, WaitRecord, Direction, TimerStatus, TimePeriod, Tag, IntersectionGroup } from '@/types';
 import { generateId, getTimePeriodFromDate } from '@/utils/timeUtils';
 import { mockIntersections, mockRecords } from '@/data/mockData';
 
@@ -8,6 +8,7 @@ export type SaveResult = 'success' | 'too_short' | null;
 interface DataState {
   intersections: Intersection[];
   records: WaitRecord[];
+  groups: IntersectionGroup[];
   timerStatus: TimerStatus;
   elapsedSeconds: number;
   selectedIntersectionId: string | null;
@@ -34,10 +35,37 @@ interface DataState {
   addIntersection: (intersection: Omit<Intersection, 'id' | 'createdAt'>) => void;
   updateIntersection: (id: string, data: Partial<Intersection>) => void;
   deleteIntersection: (id: string) => void;
+
+  addGroup: (group: Omit<IntersectionGroup, 'id' | 'createdAt'>) => void;
+  updateGroup: (id: string, data: Partial<IntersectionGroup>) => void;
+  deleteGroup: (id: string) => void;
+  addIntersectionToGroup: (groupId: string, intersectionId: string) => void;
+  removeIntersectionFromGroup: (groupId: string, intersectionId: string) => void;
+  toggleIntersectionInGroup: (groupId: string, intersectionId: string) => void;
 }
 
 const STORAGE_KEY_INTERSECTIONS = 'traffic_light_intersections';
 const STORAGE_KEY_RECORDS = 'traffic_light_records';
+const STORAGE_KEY_GROUPS = 'traffic_light_groups';
+
+const mockGroups: IntersectionGroup[] = [
+  {
+    id: 'group_001',
+    name: '上班路线',
+    description: '工作日通勤常用路口',
+    color: '#3b82f6',
+    intersectionIds: ['int_001', 'int_002', 'int_004'],
+    createdAt: '2025-01-20T10:00:00.000Z',
+  },
+  {
+    id: 'group_002',
+    name: '周末常走',
+    description: '周末休闲出行路线',
+    color: '#10b981',
+    intersectionIds: ['int_003', 'int_005'],
+    createdAt: '2025-01-21T14:30:00.000Z',
+  },
+];
 
 function loadFromStorage<T>(key: string, defaultValue: T): T {
   try {
@@ -59,6 +87,7 @@ function saveToStorage<T>(key: string, value: T) {
 export const useDataStore = create<DataState>((set, get) => ({
   intersections: [],
   records: [],
+  groups: [],
   timerStatus: 'idle',
   elapsedSeconds: 0,
   selectedIntersectionId: null,
@@ -71,9 +100,11 @@ export const useDataStore = create<DataState>((set, get) => ({
   initData: () => {
     const storedIntersections = loadFromStorage<Intersection[]>(STORAGE_KEY_INTERSECTIONS, []);
     const storedRecords = loadFromStorage<WaitRecord[]>(STORAGE_KEY_RECORDS, []);
+    const storedGroups = loadFromStorage<IntersectionGroup[]>(STORAGE_KEY_GROUPS, []);
 
     const intersections = storedIntersections.length > 0 ? storedIntersections : mockIntersections;
     const records = storedRecords.length > 0 ? storedRecords : mockRecords;
+    const groups = storedGroups.length > 0 ? storedGroups : mockGroups;
 
     if (storedIntersections.length === 0) {
       saveToStorage(STORAGE_KEY_INTERSECTIONS, mockIntersections);
@@ -81,10 +112,14 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (storedRecords.length === 0) {
       saveToStorage(STORAGE_KEY_RECORDS, mockRecords);
     }
+    if (storedGroups.length === 0) {
+      saveToStorage(STORAGE_KEY_GROUPS, mockGroups);
+    }
 
     set({
       intersections,
       records,
+      groups,
       selectedIntersectionId: intersections.length > 0 ? intersections[0].id : null,
       selectedDirection: 'east',
     });
@@ -233,5 +268,71 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (state.selectedIntersectionId === id) {
       set({ selectedIntersectionId: intersections.length > 0 ? intersections[0].id : null });
     }
+
+    const groups = get().groups.map(g => ({
+      ...g,
+      intersectionIds: g.intersectionIds.filter(intId => intId !== id),
+    }));
+    set({ groups });
+    saveToStorage(STORAGE_KEY_GROUPS, groups);
+  },
+
+  addGroup: (group) => {
+    const newGroup: IntersectionGroup = {
+      ...group,
+      id: generateId(),
+      createdAt: new Date().toISOString(),
+    };
+    const groups = [...get().groups, newGroup];
+    set({ groups });
+    saveToStorage(STORAGE_KEY_GROUPS, groups);
+  },
+
+  updateGroup: (id, data) => {
+    const groups = get().groups.map(g =>
+      g.id === id ? { ...g, ...data } : g
+    );
+    set({ groups });
+    saveToStorage(STORAGE_KEY_GROUPS, groups);
+  },
+
+  deleteGroup: (id) => {
+    const groups = get().groups.filter(g => g.id !== id);
+    set({ groups });
+    saveToStorage(STORAGE_KEY_GROUPS, groups);
+  },
+
+  addIntersectionToGroup: (groupId, intersectionId) => {
+    const groups = get().groups.map(g => {
+      if (g.id !== groupId) return g;
+      if (g.intersectionIds.includes(intersectionId)) return g;
+      return { ...g, intersectionIds: [...g.intersectionIds, intersectionId] };
+    });
+    set({ groups });
+    saveToStorage(STORAGE_KEY_GROUPS, groups);
+  },
+
+  removeIntersectionFromGroup: (groupId, intersectionId) => {
+    const groups = get().groups.map(g => {
+      if (g.id !== groupId) return g;
+      return { ...g, intersectionIds: g.intersectionIds.filter(id => id !== intersectionId) };
+    });
+    set({ groups });
+    saveToStorage(STORAGE_KEY_GROUPS, groups);
+  },
+
+  toggleIntersectionInGroup: (groupId, intersectionId) => {
+    const groups = get().groups.map(g => {
+      if (g.id !== groupId) return g;
+      const hasIntersection = g.intersectionIds.includes(intersectionId);
+      return {
+        ...g,
+        intersectionIds: hasIntersection
+          ? g.intersectionIds.filter(id => id !== intersectionId)
+          : [...g.intersectionIds, intersectionId],
+      };
+    });
+    set({ groups });
+    saveToStorage(STORAGE_KEY_GROUPS, groups);
   },
 }));

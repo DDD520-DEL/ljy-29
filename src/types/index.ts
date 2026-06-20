@@ -36,6 +36,31 @@ export interface IntersectionStats {
   minDuration: number;
 }
 
+export interface IntersectionGroup {
+  id: string;
+  name: string;
+  description?: string;
+  color: string;
+  intersectionIds: string[];
+  createdAt: string;
+}
+
+export interface GroupStats {
+  groupId: string;
+  groupName: string;
+  color: string;
+  intersectionCount: number;
+  recordCount: number;
+  avgDuration: number;
+  maxDuration: number;
+  totalDuration: number;
+}
+
+export const GROUP_COLORS = [
+  '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899',
+  '#14b8a6', '#f97316', '#84cc16', '#6366f1',
+];
+
 export const DIRECTION_LABELS: Record<Direction, string> = {
   east: '东',
   south: '南',

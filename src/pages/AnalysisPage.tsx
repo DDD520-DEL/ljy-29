@@ -13,17 +13,18 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { Trophy, Clock, TrendingUp, AlertTriangle, Tag } from 'lucide-react';
+import { Trophy, Clock, TrendingUp, AlertTriangle, Tag, Folder } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
-import { TIME_PERIOD_LABELS, TimePeriod, TAG_OPTIONS, TAG_LABELS, Tag as TagType } from '@/types';
+import { TIME_PERIOD_LABELS, TimePeriod, TAG_OPTIONS, TAG_LABELS, Tag as TagType, GroupStats } from '@/types';
 import { formatDate, getDaysAgoDate, isSameDay } from '@/utils/timeUtils';
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'];
 
 export default function AnalysisPage() {
-  const { records, intersections } = useDataStore();
+  const { records, intersections, groups } = useDataStore();
   const [timeRange, setTimeRange] = useState<'7' | '30'>('30');
   const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
 
   const baseFilteredRecords = useMemo(() => {
     const days = parseInt(timeRange);
@@ -32,9 +33,41 @@ export default function AnalysisPage() {
   }, [records, timeRange]);
 
   const filteredRecords = useMemo(() => {
-    if (selectedTag === 'all') return baseFilteredRecords;
-    return baseFilteredRecords.filter(r => r.tag === selectedTag);
-  }, [baseFilteredRecords, selectedTag]);
+    let result = baseFilteredRecords;
+    if (selectedTag !== 'all') {
+      result = result.filter(r => r.tag === selectedTag);
+    }
+    if (selectedGroupFilter !== 'all') {
+      const group = groups.find(g => g.id === selectedGroupFilter);
+      if (group) {
+        result = result.filter(r => group.intersectionIds.includes(r.intersectionId));
+      }
+    }
+    return result;
+  }, [baseFilteredRecords, selectedTag, selectedGroupFilter, groups]);
+
+  const groupStats = useMemo((): GroupStats[] => {
+    return groups
+      .filter(group => group.intersectionIds.length > 0)
+      .map((group) => {
+        const groupRecords = baseFilteredRecords.filter(r => group.intersectionIds.includes(r.intersectionId));
+        const durations = groupRecords.map(r => r.duration);
+        const totalDuration = durations.reduce((sum, d) => sum + d, 0);
+        const maxDuration = durations.length > 0 ? Math.max(...durations) : 0;
+
+        return {
+          groupId: group.id,
+          groupName: group.name,
+          color: group.color,
+          intersectionCount: group.intersectionIds.length,
+          recordCount: groupRecords.length,
+          avgDuration: groupRecords.length > 0 ? Math.round(totalDuration / groupRecords.length) : 0,
+          maxDuration,
+          totalDuration,
+        };
+      })
+      .sort((a, b) => b.avgDuration - a.avgDuration);
+  }, [baseFilteredRecords, groups]);
 
   const intersectionStats = useMemo(() => {
     const statsMap = new Map<string, { name: string; total: number; count: number; max: number }>();
@@ -146,6 +179,7 @@ export default function AnalysisPage() {
   }, [filteredRecords, timeRange]);
 
   const worstIntersection = intersectionStats[0];
+  const worstGroup = groupStats[0];
   const overallAvg = filteredRecords.length > 0
     ? Math.round(filteredRecords.reduce((sum, r) => sum + r.duration, 0) / filteredRecords.length)
     : 0;
@@ -191,6 +225,42 @@ export default function AnalysisPage() {
           ))}
         </div>
 
+        {groups.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Folder className="w-4 h-4 text-slate-400" />
+              <span className="text-sm text-slate-400">按分组筛选</span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedGroupFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  selectedGroupFilter === 'all'
+                    ? 'bg-amber-500 text-white'
+                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                }`}
+              >
+                全部
+              </button>
+              {groups.map((group) => (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => setSelectedGroupFilter(selectedGroupFilter === group.id ? 'all' : group.id)}
+                  className={`px-3 py-1.5 rounded-lg text-sm transition-colors`}
+                  style={{
+                    backgroundColor: selectedGroupFilter === group.id ? group.color : group.color + '25',
+                    color: selectedGroupFilter === group.id ? 'white' : group.color,
+                  }}
+                >
+                  {group.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="mb-6">
           <div className="flex items-center gap-2 mb-2">
             <Tag className="w-4 h-4 text-slate-400" />
@@ -224,6 +294,24 @@ export default function AnalysisPage() {
             ))}
           </div>
         </div>
+
+        {worstGroup && selectedGroupFilter === 'all' && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 rounded-xl">
+            <div className="flex items-center gap-2 mb-2">
+              <Folder className="w-5 h-5 text-blue-400" />
+              <span className="text-blue-400 font-medium">最耗时分组</span>
+            </div>
+            <div className="text-xl font-bold text-white mb-1">{worstGroup.groupName}</div>
+            <div className="flex items-center gap-4 text-sm">
+              <span className="text-slate-300">
+                平均等待 <span className="text-blue-400 font-bold">{worstGroup.avgDuration}</span> 秒
+              </span>
+              <span className="text-slate-400">
+                {worstGroup.recordCount} 次记录 · {worstGroup.intersectionCount} 个路口
+              </span>
+            </div>
+          </div>
+        )}
 
         {worstIntersection && (
           <div className="mb-6 p-4 bg-gradient-to-r from-red-500/20 to-amber-500/20 border border-red-500/30 rounded-xl">
@@ -262,6 +350,24 @@ export default function AnalysisPage() {
               {intersectionStats.length}<span className="text-sm font-normal text-slate-400 ml-1">个</span>
             </div>
           </div>
+          <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+            <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+              <Folder className="w-4 h-4" />
+              分组数量
+            </div>
+            <div className="text-3xl font-bold text-white">
+              {groupStats.length}<span className="text-sm font-normal text-slate-400 ml-1">个</span>
+            </div>
+          </div>
+          <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+            <div className="flex items-center gap-2 text-slate-400 text-sm mb-2">
+              <Trophy className="w-4 h-4" />
+              总记录数
+            </div>
+            <div className="text-3xl font-bold text-white">
+              {filteredRecords.length}<span className="text-sm font-normal text-slate-400 ml-1">条</span>
+            </div>
+          </div>
         </div>
 
         {tagStats.length > 0 && (
@@ -292,6 +398,75 @@ export default function AnalysisPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {groupStats.length > 0 && selectedGroupFilter === 'all' && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Folder className="w-5 h-5 text-amber-400" />
+              分组平均等待时长
+            </h2>
+            <div className="space-y-2">
+              {groupStats.map((item, index) => (
+                <div
+                  key={item.groupId}
+                  className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 flex items-center gap-4"
+                >
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium"
+                    style={{ backgroundColor: item.color + '30', color: item.color }}
+                  >
+                    {item.groupName.charAt(0)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-white truncate">{item.groupName}</div>
+                    <div className="text-xs text-slate-400">{item.recordCount} 次记录 · {item.intersectionCount} 个路口</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold" style={{ color: item.color }}>{item.avgDuration}s</div>
+                    <div className="text-xs text-slate-500">平均</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {groupStats.length > 0 && selectedGroupFilter === 'all' && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-amber-400" />
+              分组等待时长排名
+            </h2>
+            <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700/50">
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={groupStats.slice(0, 6)}
+                    layout="vertical"
+                    margin={{ left: 20, right: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
+                    <XAxis type="number" stroke="#94a3b8" fontSize={12} />
+                    <YAxis
+                      type="category"
+                      dataKey="groupName"
+                      stroke="#94a3b8"
+                      fontSize={11}
+                      width={100}
+                      tickFormatter={(value) => value.length > 8 ? value.slice(0, 8) + '...' : value}
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="avgDuration" name="平均时长" radius={[0, 4, 4, 0]}>
+                      {groupStats.slice(0, 6).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
         )}
