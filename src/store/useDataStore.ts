@@ -33,6 +33,8 @@ interface DataState {
   addRecord: (record: Omit<WaitRecord, 'id'>) => void;
   deleteRecord: (id: string) => void;
   clearAllRecords: () => void;
+  bulkDeleteRecords: (ids: string[]) => void;
+  bulkUpdateIntersection: (ids: string[], intersectionId: string, intersectionName: string) => void;
 
   addIntersection: (intersection: Omit<Intersection, 'id' | 'createdAt'>) => void;
   updateIntersection: (id: string, data: Partial<Intersection>) => void;
@@ -264,6 +266,22 @@ export const useDataStore = create<DataState>((set, get) => ({
   clearAllRecords: () => {
     set({ records: [] });
     saveToStorage(STORAGE_KEY_RECORDS, []);
+  },
+
+  bulkDeleteRecords: (ids) => {
+    const records = get().records.filter(r => !ids.includes(r.id));
+    set({ records });
+    saveToStorage(STORAGE_KEY_RECORDS, records);
+  },
+
+  bulkUpdateIntersection: (ids, intersectionId, intersectionName) => {
+    const records = get().records.map(r =>
+      ids.includes(r.id)
+        ? { ...r, intersectionId, intersectionName }
+        : r
+    );
+    set({ records });
+    saveToStorage(STORAGE_KEY_RECORDS, records);
   },
 
   addIntersection: (intersection) => {
