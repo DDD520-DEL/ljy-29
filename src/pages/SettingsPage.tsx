@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { RotateCcw, Filter, HardDrive, Trash2, AlertTriangle, ChevronRight, HelpCircle } from 'lucide-react';
+import { RotateCcw, Filter, HardDrive, Trash2, AlertTriangle, ChevronRight, HelpCircle, MessageCircle } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
 import { useOnboardingStore } from '@/store/useOnboardingStore';
 import type { SortOption } from '@/store/useDataStore';
@@ -196,12 +196,33 @@ export default function SettingsPage() {
             <div className="divide-y divide-slate-700">
               <button
                 type="button"
+                onClick={() => navigate('/help')}
+                className="w-full px-4 py-4 flex items-center justify-between text-left hover:bg-slate-700/30 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                    <MessageCircle className="w-5 h-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <div className="text-white font-medium">帮助与反馈</div>
+                    <div className="text-slate-400 text-sm mt-0.5">常见问题解答与意见反馈</div>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-500" />
+              </button>
+              <button
+                type="button"
                 onClick={handleResetOnboarding}
                 className="w-full px-4 py-4 flex items-center justify-between text-left hover:bg-slate-700/30 transition-colors"
               >
-                <div>
-                  <div className="text-white font-medium">重新查看新手引导</div>
-                  <div className="text-slate-400 text-sm mt-0.5">重新体验首次使用引导流程</div>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-slate-700/50 flex items-center justify-center">
+                    <HelpCircle className="w-5 h-5 text-slate-400" />
+                  </div>
+                  <div>
+                    <div className="text-white font-medium">重新查看新手引导</div>
+                    <div className="text-slate-400 text-sm mt-0.5">重新体验首次使用引导流程</div>
+                  </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-slate-500" />
               </button>

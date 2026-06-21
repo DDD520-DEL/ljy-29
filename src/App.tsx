@@ -10,6 +10,7 @@ import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
 import FavoritesPage from "@/pages/FavoritesPage";
 import WeeklyReportPage from "@/pages/WeeklyReportPage";
+import HelpPage from "@/pages/HelpPage";
 import { BottomNavigation } from "@/components/BottomNavigation";
 import { OnboardingOverlay } from "@/components/OnboardingOverlay";
 import { useDataStore } from "@/store/useDataStore";
@@ -73,6 +74,7 @@ function AppContent() {
         <Route path="/weekly-report" element={<WeeklyReportPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/help" element={<HelpPage />} />
       </Routes>
       {!hideBottomNav && <BottomNavigation />}
       {showOnboarding && (
