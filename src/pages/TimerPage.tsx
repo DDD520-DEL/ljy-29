@@ -4,6 +4,7 @@ import { TrafficLight } from '@/components/TrafficLight';
 import { TimerDisplay } from '@/components/TimerDisplay';
 import { IntersectionSelector } from '@/components/IntersectionSelector';
 import { DirectionSelector } from '@/components/DirectionSelector';
+import { TodayOverview } from '@/components/TodayOverview';
 import { useDataStore } from '@/store/useDataStore';
 import { TAG_OPTIONS, Tag as TagType } from '@/types';
 import { calculateMovingAveragePredictions, getCurrentPeriodPrediction } from '@/utils/predictionUtils';
@@ -52,10 +53,12 @@ export default function TimerPage() {
   return (
     <div className="min-h-screen pb-24">
       <div className="max-w-lg mx-auto px-4 py-8">
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-white mb-2">红绿灯等待计时</h1>
           <p className="text-slate-400 text-sm">记录每一次等待，让城市更高效</p>
         </div>
+
+        <TodayOverview records={records} />
 
         <div className="flex justify-center mb-8">
           <TrafficLight status={timerStatus} size="md" />
