@@ -4,12 +4,21 @@ export type TimePeriod = 'morning_peak' | 'evening_peak' | 'flat' | 'night';
 
 export type TimerStatus = 'idle' | 'running' | 'stopped';
 
+export interface SignalTiming {
+  redDuration: number;
+  greenDuration: number;
+  yellowDuration: number;
+  cycleDuration: number;
+  updatedAt: string;
+}
+
 export interface Intersection {
   id: string;
   name: string;
   area: string;
   note?: string;
   reasonableWaitTime?: number;
+  signalTiming?: SignalTiming;
   createdAt: string;
 }
 

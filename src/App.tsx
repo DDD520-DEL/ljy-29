@@ -6,6 +6,8 @@ import RecordDetailPage from "@/pages/RecordDetailPage";
 import AnalysisPage from "@/pages/AnalysisPage";
 import ComparisonPage from "@/pages/ComparisonPage";
 import IntersectionsPage from "@/pages/IntersectionsPage";
+import IntersectionDetailPage from "@/pages/IntersectionDetailPage";
+import SignalTimingEditPage from "@/pages/SignalTimingEditPage";
 import ProfilePage from "@/pages/ProfilePage";
 import SettingsPage from "@/pages/SettingsPage";
 import FavoritesPage from "@/pages/FavoritesPage";
@@ -57,7 +59,8 @@ function AppContent() {
     }
   }, [currentStep, isVisible, hasCompletedOnboarding, navigate]);
 
-  const hideBottomNav = location.pathname.startsWith('/records/') && location.pathname !== '/records';
+  const hideBottomNav = (location.pathname.startsWith('/records/') && location.pathname !== '/records')
+    || (location.pathname.startsWith('/intersections/') && location.pathname !== '/intersections');
 
   const showOnboarding = isVisible && !hasCompletedOnboarding && !hideBottomNav;
 
@@ -70,6 +73,8 @@ function AppContent() {
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/comparison" element={<ComparisonPage />} />
         <Route path="/intersections" element={<IntersectionsPage />} />
+        <Route path="/intersections/:id" element={<IntersectionDetailPage />} />
+        <Route path="/intersections/:id/signal-timing" element={<SignalTimingEditPage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
         <Route path="/weekly-report" element={<WeeklyReportPage />} />
         <Route path="/profile" element={<ProfilePage />} />

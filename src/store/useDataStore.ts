@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Intersection, WaitRecord, Direction, TimerStatus, Tag, IntersectionGroup, DailyReminder, CheckInRecord, CheckInReward } from '@/types';
+import { Intersection, WaitRecord, Direction, TimerStatus, Tag, IntersectionGroup, DailyReminder, CheckInRecord, CheckInReward, SignalTiming } from '@/types';
 import { generateId, getTimePeriodFromDate, formatDate } from '@/utils/timeUtils';
 import { mockIntersections, mockRecords } from '@/data/mockData';
 
@@ -53,6 +53,7 @@ interface DataState {
   addIntersection: (intersection: Omit<Intersection, 'id' | 'createdAt'>) => void;
   updateIntersection: (id: string, data: Partial<Intersection>) => void;
   deleteIntersection: (id: string) => void;
+  updateSignalTiming: (intersectionId: string, timing: Omit<SignalTiming, 'updatedAt'>) => void;
 
   addGroup: (group: Omit<IntersectionGroup, 'id' | 'createdAt'>) => void;
   updateGroup: (id: string, data: Partial<IntersectionGroup>) => void;
@@ -405,6 +406,22 @@ export const useDataStore = create<DataState>((set, get) => ({
   updateIntersection: (id, data) => {
     const intersections = get().intersections.map(i =>
       i.id === id ? { ...i, ...data } : i
+    );
+    set({ intersections });
+    saveToStorage(STORAGE_KEY_INTERSECTIONS, intersections);
+  },
+
+  updateSignalTiming: (intersectionId, timing) => {
+    const intersections = get().intersections.map(i =>
+      i.id === intersectionId
+        ? {
+            ...i,
+            signalTiming: {
+              ...timing,
+              updatedAt: new Date().toISOString(),
+            },
+          }
+        : i
     );
     set({ intersections });
     saveToStorage(STORAGE_KEY_INTERSECTIONS, intersections);
