@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { RotateCcw, Filter, HardDrive, Trash2, AlertTriangle, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { RotateCcw, Filter, HardDrive, Trash2, AlertTriangle, ChevronRight, HelpCircle } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
+import { useOnboardingStore } from '@/store/useOnboardingStore';
 import type { SortOption } from '@/store/useDataStore';
 import { TIME_PERIOD_LABELS } from '@/types';
 
@@ -22,7 +24,14 @@ const STORAGE_KEYS = [
 
 export default function SettingsPage() {
   const { settings, updateSettings, clearAllData } = useDataStore();
+  const { resetOnboarding } = useOnboardingStore();
+  const navigate = useNavigate();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  const handleResetOnboarding = () => {
+    resetOnboarding();
+    navigate('/');
+  };
 
   const storageInfo = (() => {
     let totalSize = 0;
@@ -174,6 +183,28 @@ export default function SettingsPage() {
                   数据仅保存在你的设备上，不会上传到任何服务器。清除浏览器数据会导致数据丢失。
                 </p>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-700">
+              <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-amber-400" />
+                使用帮助
+              </h2>
+            </div>
+            <div className="divide-y divide-slate-700">
+              <button
+                type="button"
+                onClick={handleResetOnboarding}
+                className="w-full px-4 py-4 flex items-center justify-between text-left hover:bg-slate-700/30 transition-colors"
+              >
+                <div>
+                  <div className="text-white font-medium">重新查看新手引导</div>
+                  <div className="text-slate-400 text-sm mt-0.5">重新体验首次使用引导流程</div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-500" />
+              </button>
             </div>
           </div>
 
