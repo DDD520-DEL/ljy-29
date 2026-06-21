@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from "react-router-dom";
 import { useEffect } from 'react';
+import DashboardPage from "@/pages/DashboardPage";
 import TimerPage from "@/pages/TimerPage";
 import RecordsPage from "@/pages/RecordsPage";
 import RecordDetailPage from "@/pages/RecordDetailPage";
@@ -51,7 +52,7 @@ function AppContent() {
     if (!isVisible || hasCompletedOnboarding) return;
 
     if (currentStep === 'timer') {
-      navigate('/');
+      navigate('/timer');
     } else if (currentStep === 'records') {
       navigate('/records');
     } else if (currentStep === 'analysis') {
@@ -67,7 +68,8 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-slate-900">
       <Routes>
-        <Route path="/" element={<TimerPage />} />
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/timer" element={<TimerPage />} />
         <Route path="/records" element={<RecordsPage />} />
         <Route path="/records/:id" element={<RecordDetailPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />

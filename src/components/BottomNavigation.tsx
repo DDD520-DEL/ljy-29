@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { Timer, ListTodo, BarChart3, MapPin, Star, Settings, CalendarDays } from 'lucide-react';
+import { Home, Timer, ListTodo, BarChart3, MapPin, Star, Settings, CalendarDays } from 'lucide-react';
 
 export function BottomNavigation() {
   const navItems = [
-    { to: '/', label: '计时', icon: Timer },
+    { to: '/', label: '首页', icon: Home },
+    { to: '/timer', label: '计时', icon: Timer },
     { to: '/records', label: '记录', icon: ListTodo },
     { to: '/analysis', label: '分析', icon: BarChart3 },
     { to: '/weekly-report', label: '周报', icon: CalendarDays },
