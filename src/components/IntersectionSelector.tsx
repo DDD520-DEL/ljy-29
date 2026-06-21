@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Search, Plus, MapPin, Folder, X, GitCompare } from 'lucide-react';
+import { ChevronDown, Search, Plus, MapPin, Folder, X, GitCompare, Star } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,7 +8,7 @@ interface IntersectionSelectorProps {
 }
 
 export function IntersectionSelector({ disabled = false }: IntersectionSelectorProps) {
-  const { intersections, groups, selectedIntersectionId, setSelectedIntersection } = useDataStore();
+  const { intersections, groups, selectedIntersectionId, setSelectedIntersection, favoriteIds, toggleFavorite } = useDataStore();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -28,6 +28,10 @@ export function IntersectionSelector({ disabled = false }: IntersectionSelectorP
     }
 
     return matchesSearch;
+  }).sort((a, b) => {
+    const aFav = favoriteIds.includes(a.id) ? 0 : 1;
+    const bFav = favoriteIds.includes(b.id) ? 0 : 1;
+    return aFav - bFav;
   });
 
   useEffect(() => {
@@ -133,6 +137,7 @@ export function IntersectionSelector({ disabled = false }: IntersectionSelectorP
             {filteredIntersections.length > 0 ? (
               filteredIntersections.map((intersection) => {
                 const intersectionGroups = groups.filter(g => g.intersectionIds.includes(intersection.id));
+                const isFav = favoriteIds.includes(intersection.id);
                 return (
                   <div
                     key={intersection.id}
@@ -145,7 +150,10 @@ export function IntersectionSelector({ disabled = false }: IntersectionSelectorP
                       onClick={() => handleSelect(intersection.id)}
                       className="flex-1 px-4 py-3 text-left min-w-0"
                     >
-                      <div className="font-medium text-white truncate">{intersection.name}</div>
+                      <div className="font-medium text-white truncate flex items-center gap-1.5">
+                        {isFav && <Star className="w-3 h-3 text-amber-400 fill-current flex-shrink-0" />}
+                        {intersection.name}
+                      </div>
                       <div className="text-xs text-slate-400 truncate">{intersection.area}</div>
                       {intersectionGroups.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1.5">
@@ -160,6 +168,21 @@ export function IntersectionSelector({ disabled = false }: IntersectionSelectorP
                           ))}
                         </div>
                       )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(intersection.id);
+                      }}
+                      className={`px-2 py-3 mr-1 rounded-lg transition-colors flex items-center ${
+                        isFav
+                          ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10'
+                          : 'text-slate-500 hover:text-amber-400 hover:bg-amber-500/10'
+                      }`}
+                      title={isFav ? '取消收藏' : '添加收藏'}
+                    >
+                      <Star className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
                     </button>
                     <button
                       type="button"

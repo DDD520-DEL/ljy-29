@@ -1,13 +1,13 @@
 import { NavLink } from 'react-router-dom';
-import { Timer, ListTodo, BarChart3, MapPin, User, Settings } from 'lucide-react';
+import { Timer, ListTodo, BarChart3, MapPin, Star, Settings } from 'lucide-react';
 
 export function BottomNavigation() {
   const navItems = [
     { to: '/', label: '计时', icon: Timer },
     { to: '/records', label: '记录', icon: ListTodo },
     { to: '/analysis', label: '分析', icon: BarChart3 },
+    { to: '/favorites', label: '收藏', icon: Star },
     { to: '/intersections', label: '路口', icon: MapPin },
-    { to: '/profile', label: '我的', icon: User },
     { to: '/settings', label: '设置', icon: Settings },
   ];
 

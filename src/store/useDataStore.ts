@@ -28,11 +28,14 @@ interface DataState {
   pendingRecord: Omit<WaitRecord, 'id' | 'note' | 'tag'> | null;
   reminders: DailyReminder[];
   checkInRecords: CheckInRecord[];
+  favoriteIds: string[];
   settings: Settings;
 
   initData: () => void;
   setSelectedIntersection: (id: string | null) => void;
   setSelectedDirection: (direction: Direction | null) => void;
+  toggleFavorite: (intersectionId: string) => void;
+  isFavorite: (intersectionId: string) => boolean;
 
   startTimer: () => void;
   stopTimer: () => void;
@@ -79,6 +82,7 @@ const STORAGE_KEY_GROUPS = 'traffic_light_groups';
 const STORAGE_KEY_REMINDERS = 'traffic_light_reminders';
 const STORAGE_KEY_CHECKINS = 'traffic_light_checkins';
 const STORAGE_KEY_SETTINGS = 'traffic_light_settings';
+const STORAGE_KEY_FAVORITES = 'traffic_light_favorites';
 
 const defaultSettings: Settings = {
   autoResetTimer: false,
@@ -156,6 +160,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   pendingRecord: null,
   reminders: [],
   checkInRecords: [],
+  favoriteIds: [],
   settings: defaultSettings,
 
   initData: () => {
@@ -165,6 +170,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     const storedReminders = loadFromStorage<DailyReminder[]>(STORAGE_KEY_REMINDERS, []);
     const storedCheckIns = loadFromStorage<CheckInRecord[]>(STORAGE_KEY_CHECKINS, []);
     const storedSettings = loadFromStorage<Settings>(STORAGE_KEY_SETTINGS, defaultSettings);
+    const storedFavorites = loadFromStorage<string[]>(STORAGE_KEY_FAVORITES, []);
 
     const intersections = storedIntersections.length > 0 ? storedIntersections : mockIntersections;
     const records = storedRecords.length > 0 ? storedRecords : mockRecords;
@@ -195,6 +201,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       groups,
       reminders,
       checkInRecords: storedCheckIns,
+      favoriteIds: storedFavorites,
       settings,
       selectedIntersectionId: intersections.length > 0 ? intersections[0].id : null,
       selectedDirection: 'east',
@@ -207,6 +214,19 @@ export const useDataStore = create<DataState>((set, get) => ({
 
   setSelectedIntersection: (id) => set({ selectedIntersectionId: id }),
   setSelectedDirection: (direction) => set({ selectedDirection: direction }),
+
+  toggleFavorite: (intersectionId) => {
+    const { favoriteIds } = get();
+    const newFavoriteIds = favoriteIds.includes(intersectionId)
+      ? favoriteIds.filter(id => id !== intersectionId)
+      : [...favoriteIds, intersectionId];
+    set({ favoriteIds: newFavoriteIds });
+    saveToStorage(STORAGE_KEY_FAVORITES, newFavoriteIds);
+  },
+
+  isFavorite: (intersectionId) => {
+    return get().favoriteIds.includes(intersectionId);
+  },
 
   startTimer: () => {
     const { selectedIntersectionId, selectedDirection } = get();
@@ -399,6 +419,10 @@ export const useDataStore = create<DataState>((set, get) => ({
     if (state.selectedIntersectionId === id) {
       set({ selectedIntersectionId: intersections.length > 0 ? intersections[0].id : null });
     }
+
+    const favoriteIds = get().favoriteIds.filter(fid => fid !== id);
+    set({ favoriteIds });
+    saveToStorage(STORAGE_KEY_FAVORITES, favoriteIds);
 
     const groups = get().groups.map(g => ({
       ...g,
@@ -598,6 +622,7 @@ export const useDataStore = create<DataState>((set, get) => ({
       intersections: [],
       groups: [],
       reminders: [],
+      favoriteIds: [],
       settings: defaultSettings,
       timerStatus: 'idle',
       elapsedSeconds: 0,
@@ -614,6 +639,7 @@ export const useDataStore = create<DataState>((set, get) => ({
     saveToStorage(STORAGE_KEY_INTERSECTIONS, []);
     saveToStorage(STORAGE_KEY_GROUPS, []);
     saveToStorage(STORAGE_KEY_REMINDERS, []);
+    saveToStorage(STORAGE_KEY_FAVORITES, []);
     saveToStorage(STORAGE_KEY_SETTINGS, defaultSettings);
   },
 }));
