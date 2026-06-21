@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ListTodo, Clock, Timer, MapPin, ChevronRight, TrendingUp, CalendarDays, Sparkles } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
 import { formatDurationWithHours, formatDateTime } from '@/utils/timeUtils';
+import MonthlySummaryCard from '@/components/MonthlySummaryCard';
 
 export default function DashboardPage() {
   const { records, intersections } = useDataStore();
@@ -215,6 +216,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      <MonthlySummaryCard />
     </div>
   );
 }
