@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { Timer, ListTodo, BarChart3, MapPin, Star, Settings } from 'lucide-react';
+import { Timer, ListTodo, BarChart3, MapPin, Star, Settings, CalendarDays } from 'lucide-react';
 
 export function BottomNavigation() {
   const navItems = [
     { to: '/', label: '计时', icon: Timer },
     { to: '/records', label: '记录', icon: ListTodo },
     { to: '/analysis', label: '分析', icon: BarChart3 },
+    { to: '/weekly-report', label: '周报', icon: CalendarDays },
     { to: '/favorites', label: '收藏', icon: Star },
     { to: '/intersections', label: '路口', icon: MapPin },
     { to: '/settings', label: '设置', icon: Settings },
