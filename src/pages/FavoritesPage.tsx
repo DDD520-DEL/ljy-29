@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
-import { Star, MapPin, Clock, Play, StarOff } from 'lucide-react';
+import { MapPin, Clock, Play, StarOff } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
 import { useNavigate } from 'react-router-dom';
 import { GRADE_LABELS, GRADE_COLORS } from '@/types';
 import { calculateAllTimingScores } from '@/utils/timingScore';
+import { FavoriteStarButton } from '@/components/IntersectionSelector';
 
 export default function FavoritesPage() {
-  const { intersections, favoriteIds, records, toggleFavorite, setSelectedIntersection, setSelectedDirection } = useDataStore();
+  const { intersections, favoriteIds, records, setSelectedIntersection } = useDataStore();
   const navigate = useNavigate();
 
   const favoriteIntersections = useMemo(() => {
@@ -21,7 +22,6 @@ export default function FavoritesPage() {
 
   const handleGoToTimer = (intersectionId: string) => {
     setSelectedIntersection(intersectionId);
-    setSelectedDirection('east');
     navigate('/');
   };
 
@@ -87,14 +87,7 @@ export default function FavoritesPage() {
                         >
                           <Play className="w-4 h-4" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => toggleFavorite(intersection.id)}
-                          className="p-2 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 rounded-lg transition-colors"
-                          title="取消收藏"
-                        >
-                          <Star className="w-4 h-4 fill-current" />
-                        </button>
+                        <FavoriteStarButton intersectionId={intersection.id} isFav={true} />
                       </div>
                     </div>
                   </div>
@@ -138,14 +131,7 @@ export default function FavoritesPage() {
                       <div className="text-sm text-slate-300 truncate">{intersection.name}</div>
                       <div className="text-xs text-slate-500 truncate">{intersection.area}</div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => toggleFavorite(intersection.id)}
-                      className="p-1.5 text-slate-500 hover:text-amber-400 hover:bg-amber-500/10 rounded-lg transition-colors"
-                      title="添加收藏"
-                    >
-                      <Star className="w-4 h-4" />
-                    </button>
+                    <FavoriteStarButton intersectionId={intersection.id} isFav={false} />
                   </div>
                 ))}
             </div>

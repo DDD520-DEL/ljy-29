@@ -2,13 +2,43 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Search, Plus, MapPin, Folder, X, GitCompare, Star } from 'lucide-react';
 import { useDataStore } from '@/store/useDataStore';
 import { useNavigate } from 'react-router-dom';
+import { useLongPress } from '@/hooks/useLongPress';
+
+interface FavoriteStarButtonProps {
+  intersectionId: string;
+  isFav: boolean;
+}
+
+export function FavoriteStarButton({ intersectionId, isFav }: FavoriteStarButtonProps) {
+  const { toggleFavorite } = useDataStore();
+  const handleToggle = () => toggleFavorite(intersectionId);
+  const longPressHandlers = useLongPress({
+    onLongPress: handleToggle,
+    onClick: handleToggle,
+  });
+
+  return (
+    <button
+      type="button"
+      {...longPressHandlers}
+      className={`px-2 py-3 mr-1 rounded-lg transition-colors flex items-center select-none ${
+        isFav
+          ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10'
+          : 'text-slate-500 hover:text-amber-400 hover:bg-amber-500/10'
+      }`}
+      title={isFav ? '点击或长按取消收藏' : '点击或长按添加收藏'}
+    >
+      <Star className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
+    </button>
+  );
+}
 
 interface IntersectionSelectorProps {
   disabled?: boolean;
 }
 
 export function IntersectionSelector({ disabled = false }: IntersectionSelectorProps) {
-  const { intersections, groups, selectedIntersectionId, setSelectedIntersection, favoriteIds, toggleFavorite } = useDataStore();
+  const { intersections, groups, selectedIntersectionId, setSelectedIntersection, favoriteIds } = useDataStore();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -169,21 +199,7 @@ export function IntersectionSelector({ disabled = false }: IntersectionSelectorP
                         </div>
                       )}
                     </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(intersection.id);
-                      }}
-                      className={`px-2 py-3 mr-1 rounded-lg transition-colors flex items-center ${
-                        isFav
-                          ? 'text-amber-400 hover:text-amber-300 hover:bg-amber-500/10'
-                          : 'text-slate-500 hover:text-amber-400 hover:bg-amber-500/10'
-                      }`}
-                      title={isFav ? '取消收藏' : '添加收藏'}
-                    >
-                      <Star className={`w-4 h-4 ${isFav ? 'fill-current' : ''}`} />
-                    </button>
+                    <FavoriteStarButton intersectionId={intersection.id} isFav={isFav} />
                     <button
                       type="button"
                       onClick={(e) => {
