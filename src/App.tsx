@@ -1,7 +1,8 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { useEffect } from 'react';
 import TimerPage from "@/pages/TimerPage";
 import RecordsPage from "@/pages/RecordsPage";
+import RecordDetailPage from "@/pages/RecordDetailPage";
 import AnalysisPage from "@/pages/AnalysisPage";
 import ComparisonPage from "@/pages/ComparisonPage";
 import IntersectionsPage from "@/pages/IntersectionsPage";
@@ -13,6 +14,7 @@ import { useNotification } from "@/hooks/useNotification";
 
 function AppContent() {
   const { initData, reminders } = useDataStore();
+  const location = useLocation();
 
   useNotification(reminders);
 
@@ -20,18 +22,21 @@ function AppContent() {
     initData();
   }, [initData]);
 
+  const hideBottomNav = location.pathname.startsWith('/records/') && location.pathname !== '/records';
+
   return (
     <div className="min-h-screen bg-slate-900">
       <Routes>
         <Route path="/" element={<TimerPage />} />
         <Route path="/records" element={<RecordsPage />} />
+        <Route path="/records/:id" element={<RecordDetailPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
         <Route path="/comparison" element={<ComparisonPage />} />
         <Route path="/intersections" element={<IntersectionsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
-      <BottomNavigation />
+      {!hideBottomNav && <BottomNavigation />}
     </div>
   );
 }

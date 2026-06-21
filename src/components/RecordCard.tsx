@@ -1,4 +1,5 @@
 import { Trash2, Tag, FileText, AlertTriangle, Check } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { WaitRecord, TIME_PERIOD_LABELS, TAG_LABELS } from '@/types';
 import { formatDurationWithHours, formatDateTime, getDirectionLabel, getDirectionEmoji } from '@/utils/timeUtils';
 import { useDataStore } from '@/store/useDataStore';
@@ -12,8 +13,10 @@ interface RecordCardProps {
 
 export function RecordCard({ record, isMultiSelectMode = false, isSelected = false, onSelect }: RecordCardProps) {
   const { deleteRecord } = useDataStore();
+  const navigate = useNavigate();
 
-  const handleDelete = () => {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (confirm('确定要删除这条记录吗？')) {
       deleteRecord(record.id);
     }
@@ -22,6 +25,8 @@ export function RecordCard({ record, isMultiSelectMode = false, isSelected = fal
   const handleCardClick = () => {
     if (isMultiSelectMode && onSelect) {
       onSelect(record.id);
+    } else if (!isMultiSelectMode) {
+      navigate(`/records/${record.id}`);
     }
   };
 
@@ -39,9 +44,7 @@ export function RecordCard({ record, isMultiSelectMode = false, isSelected = fal
 
   return (
     <div
-      className={`bg-slate-800/50 rounded-xl p-4 border transition-all hover:border-slate-600 ${getBorderStyle()} ${
-        isMultiSelectMode ? 'cursor-pointer' : ''
-      }`}
+      className={`bg-slate-800/50 rounded-xl p-4 border transition-all hover:border-slate-600 ${getBorderStyle()} cursor-pointer`}
       onClick={handleCardClick}
     >
       <div className="flex items-start justify-between">
